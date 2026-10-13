@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Test and tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Generated audio and experiment outputs
+data/sources/*
+!data/sources/.gitkeep
+data/mixtures/*
+!data/mixtures/.gitkeep
+data/separated/*
+!data/separated/.gitkeep
+results/*
+!results/plots/
+results/plots/*
+!results/plots/.gitkeep
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
