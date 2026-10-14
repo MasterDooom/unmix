@@ -1,0 +1,5 @@
+# Optional pretrained inference dependencies for Track Lab.
+# The CPU extra installs the inference runtimes required for a normal Windows laptop.
+# This is intentionally separate from the lightweight Mix Lab/API test environment.
+# First use downloads model weights; FFmpeg must also be installed and on PATH.
+audio-separator[cpu]>=0.45

@@ -96,6 +96,17 @@ Previously recorded NumPy-only checks remain useful as separate numerical-core
 verification. They should not be confused with the full CI execution described
 above.
 
+
+## Web product verification
+
+The web layer is covered by a separate GitHub Actions job. The API workflow tests validate request/response behavior and error paths. A real Mix Lab integration test generates known mono WAV sources, posts them through FastAPI, invokes the repository's implemented FastICA pipeline, and requests the returned mixture and component files from the media endpoint. The frontend test and production build are run in CI as well.
+
+The web/API checks and core numerical workflow passed in GitHub Actions run [#16](https://github.com/MasterDooom/unmix/actions/runs/38601814804). This confirms the tested Mix Lab path and frontend build in CI; it does **not** verify a real pretrained Track Lab inference run on the owner's Windows computer.
+
+Track Lab uses the separately installed `audio-separator[cpu]` runtime. Its first actual inference may download substantial model weights, and FFmpeg must be available for formats that require it. Model-inference success, local Windows setup, and audio quality on arbitrary commercial songs remain to be verified on the target machine. Track Lab outputs should be described as model estimates, not recovered original studio tracks.
+
+On Windows, `web/start-local.ps1` launches the backend and frontend and checks that they respond. Its optional `-CoreOnly` mode intentionally skips the heavy Track Lab model runtime; Mix Lab remains the appropriate controlled demonstration of the project's own PCA whitening and FastICA implementation.
+
 ## Limitations
 
 Finite samples, additive noise, near-singular matrices, nonstationary audio,

@@ -29,3 +29,9 @@ results/plots/*
 Thumbs.db
 .vscode/
 .idea/
+
+# Local web application runtime and build outputs
+web/runtime/
+web/frontend/node_modules/
+web/frontend/dist/
+web/frontend/coverage/
