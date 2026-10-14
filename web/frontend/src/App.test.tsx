@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import App from "./App";
 
 describe("Unmix workspace", () => {
@@ -41,5 +41,19 @@ describe("Unmix workspace", () => {
     expect(
       screen.getByRole("button", { name: /run ica recovery/i }),
     ).toBeEnabled();
+  });
+
+  it("explains how to start the API when a Track Lab upload cannot connect", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    try {
+      render(<App />);
+      fireEvent.change(screen.getByLabelText("Track file"), {
+        target: { files: [new File(["audio"], "song.wav", { type: "audio/wav" })] },
+      });
+      fireEvent.click(screen.getByRole("button", { name: /estimate stems/i }));
+      expect(await screen.findByRole("alert")).toHaveTextContent(/start the backend and frontend/i);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
