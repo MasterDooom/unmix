@@ -13,8 +13,20 @@ const colors = ["#3be3b1", "#5fb7ff", "#a987ff", "#f4b864", "#ff7f9b", "#52d9e9"
 const identityMatrix = (count: number) => JSON.stringify(Array.from({ length: count }, (_, row) => Array.from({ length: count }, (_, column) => row === column ? 1 : 0)), null, 2);
 const requestError = async (response: Response) => {
   const body = await response.json().catch(() => ({}));
-  return body.detail || `Request failed (${response.status}).`;
+  if (body.detail) return body.detail;
+  if ([502, 503, 504].includes(response.status)) {
+    return "The local API could not complete the request. Check the FastAPI terminal for the underlying error.";
+  }
+  return `Request failed (${response.status}).`;
 };
+
+function explainFailure(reason: unknown) {
+  const message = reason instanceof Error ? reason.message : "Unexpected request failure.";
+  if (/failed to fetch|networkerror|load failed/i.test(message)) {
+    return "Cannot reach the Unmix API. Start the backend and frontend with .\\web\\start-local.ps1, then open http://localhost:5173.";
+  }
+  return message;
+}
 
 function UploadPanel({ mode, onTrack, onMix }: { mode: Mode; onTrack: (file: File) => void; onMix: (files: FileList) => void }) {
   const [track, setTrack] = useState<File | null>(null);
@@ -58,7 +70,7 @@ export default function App() {
     setTrackFile(file); setTrackResult(null); setError(null); setProcessing(true);
     const form = new FormData(); form.append("track", file);
     try { const response = await fetch("/api/track-lab/separate", { method: "POST", body: form }); if (!response.ok) throw new Error(await requestError(response)); setTrackResult(await response.json()); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : "Track Lab could not process this file."); }
+    catch (reason) { setError(explainFailure(reason)); }
     finally { setProcessing(false); }
   };
   const chooseMix = (files: FileList) => { const selected = Array.from(files); setSourceFiles(selected); setMatrix(identityMatrix(selected.length)); setMixResult(null); setError(null); };
@@ -66,7 +78,7 @@ export default function App() {
     if (sourceFiles.length < 2) return; setError(null); setProcessing(true);
     const form = new FormData(); sourceFiles.forEach((source) => form.append("sources", source)); form.append("mixing_matrix", matrix);
     try { const response = await fetch("/api/mix-lab/separate", { method: "POST", body: form }); if (!response.ok) throw new Error(await requestError(response)); setMixResult(await response.json()); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : "Mix Lab could not run the experiment."); }
+    catch (reason) { setError(explainFailure(reason)); }
     finally { setProcessing(false); }
   };
 
