@@ -7,10 +7,10 @@ Recover independent audio sources from recordings containing mixtures of those s
 **Stages 1–5: end-to-end reproducible workflow.** The project provides validated
 mixing, whitening, symmetric FastICA, ambiguity-aware recovery metrics, WAV
 input/output, a command-line audio demo, and deterministic experiments.
-Runtime verification requires an environment with the dependencies in
-`requirements.txt`; the bundled Python 3.12 runtime verified the NumPy-only
-whitening/FastICA core, while full audio/plot/test execution still needs SciPy,
-SoundFile, Matplotlib, and pytest. See the report for details.
+The complete workflow was verified remotely on Python 3.12.15: all 33 tests
+passed, and the mixing demo, synthetic experiments, and generated-audio demo
+completed successfully. The local Windows Python environment still lacks the
+full dependency set; see the report and the [successful GitHub Actions run](https://github.com/MasterDooom/unmix/actions/runs/38527118330).
 
 ## Architecture
 
@@ -84,9 +84,15 @@ The separator will receive only `X`; the original `S` and known `A` are retained
 
 See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for the source of truth and implementation acceptance criteria.
 
-## Local web workspace
 
-### One-command Windows startup
+## Web application
+
+The web product has two separate workflows:
+
+- **Track Lab** uses an optional pretrained model to estimate stems from a finished song. These are estimates, not guaranteed reconstructions of the original studio tracks. The first model run can download weights and may take time.
+- **Mix Lab** creates a controlled linear mix from two or more clean mono source recordings, runs this repository's own PCA whitening and FastICA implementation, and evaluates recovery after separation.
+
+### Start locally on Windows
 
 From the repository root in PowerShell, run:
 
@@ -94,50 +100,11 @@ From the repository root in PowerShell, run:
 .\web\start-local.ps1
 ```
 
-The launcher installs the API dependencies and CPU Track Lab model dependencies, starts FastAPI and Vite in separate terminals, waits for the API health endpoint, and opens the website. The pretrained model weights download on first separation, so the first run can take a while and needs disk space. If FFmpeg is missing, the launcher attempts to install it with WinGet; without WinGet, install FFmpeg separately and reopen the terminal. Use `-CoreOnly` to skip heavyweight Track Lab dependencies (Mix Lab/API only), or `-SkipInstall` when dependencies are already installed.
+The script installs the API/frontend dependencies, attempts to install the optional CPU Track Lab runtime and FFmpeg, starts the FastAPI backend and Vite frontend in separate terminals, checks the API health endpoint, and opens `http://localhost:5173`. The first launch can take several minutes; the first Track Lab separation may download model weights.
 
-The optional website layer provides two deliberately different workflows:
+Use `-CoreOnly` to skip the heavy pretrained-model dependencies and run Mix Lab only. In that mode Track Lab will remain unavailable until its optional dependencies are installed. Use `-SkipInstall` if dependencies are already installed.
 
-- **Track Lab** sends one finished track to an *optional* pretrained model adapter.
-  Its returned stems are estimates, not verified original instrument tracks. The
-  core ICA package has no model dependency.
-- **Mix Lab** uploads two or more known clean, mono sources, creates `X = A @ S`
-  from the user-provided full-column-rank matrix, runs this repository's FastICA,
-  and evaluates recovery only after separation. It supports any source count the
-  matrix and audio resources can reasonably handle; it is not fixed at three.
-
-Install the core plus web API dependencies, then start the API and Vite server in
-two shells. The frontend proxies `/api` and `/media` to the local API.
-
-```powershell
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r web\requirements.txt
-$env:PYTHONPATH = "web\backend;src"
-uvicorn app.main:app --reload --port 8000
-```
-
-```powershell
-Set-Location web\frontend
-npm install
-npm run dev
-```
-
-Open the printed Vite address (normally `http://localhost:5173`). Run the API
-workflow tests with `PYTHONPATH="web/backend;src" python -m pytest -q
-web/backend/tests`, and the browser checks with `npm run test` / `npm run build`.
-The Track Lab adapter is intentionally not installed by the command above:
-
-```powershell
-pip install -r web\requirements-track-lab.txt
-```
-
-That optional adapter uses Audio Separator's documented default preset. It can
-download model weights on first use and depends on a suitable FFmpeg setup; run
-it only after reviewing the model licence/attribution notes in `web/README.md`.
-Uploads are limited to 100 MB per file and live in temporary per-job directories
-under `web/runtime/`; the server removes expired jobs on later requests. Upload
-only material you have rights to use.
+For API and frontend details, upload limits, retention behavior, and model attribution notes, see [web/README.md](web/README.md).
 
 ## Mathematical API
 
