@@ -94,7 +94,7 @@ From the repository root in PowerShell, run:
 .\web\start-local.ps1
 ```
 
-The launcher installs the API dependencies and CPU Track Lab model dependencies, starts FastAPI and Vite in separate terminals, waits for the API health endpoint, and opens the website. The pretrained model weights download on first separation, so the first run can take a while and needs disk space. FFmpeg must be available on PATH for supported audio conversion workflows. Use `-CoreOnly` to skip heavyweight Track Lab dependencies (Mix Lab/API only), or `-SkipInstall` when dependencies are already installed.
+The launcher installs the API dependencies and CPU Track Lab model dependencies, starts FastAPI and Vite in separate terminals, waits for the API health endpoint, and opens the website. The pretrained model weights download on first separation, so the first run can take a while and needs disk space. If FFmpeg is missing, the launcher attempts to install it with WinGet; without WinGet, install FFmpeg separately and reopen the terminal. Use `-CoreOnly` to skip heavyweight Track Lab dependencies (Mix Lab/API only), or `-SkipInstall` when dependencies are already installed.
 
 The optional website layer provides two deliberately different workflows:
 
