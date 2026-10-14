@@ -58,20 +58,43 @@ An overdetermined 3-channel/2-source synthetic mixture was also verified with
 `n_components=2`: it converged in 3 iterations, returned a 2×3 unmixing matrix,
 and achieved a minimum best-match absolute correlation of `0.9999455`.
 
-Full pytest, audio, plot, and metric execution remains blocked: the system
-Python 3.14 lacks NumPy, and the bundled Python lacks SciPy, SoundFile,
-Matplotlib, and pytest. An earlier package installation attempt was blocked by
-TLS certificate validation and was not retried. Consequently no WAV, JSON, or
-plot artifacts are reported as measured; the scripts generate genuine metrics
-and artifacts only when run in an environment satisfying `requirements.txt`.
+### Confirmed GitHub Actions verification
 
-The integration implementation was committed locally as
-`f26976e66f5a415231440487e69b887fd891c939`. Its expanded Python 3.12 GitHub
-Actions workflow runs pytest, all three demos, and uploads generated JSON, plot,
-and WAV artifacts. Publication and CI verification are pending: the one
-authorized `git push origin main` attempt failed before authentication with
-`getaddrinfo() thread failed to start`, so no CI run URL or remote artifact is
-claimed.
+The complete workflow passed on 2026-10-14 using Python 3.12.15 on GitHub-hosted
+Linux. All **33 tests passed** in 2.35 seconds. The mixing demo, synthetic
+experiments, and generated-audio demo all completed, and the workflow uploaded
+the `unmix-generated-artifacts` artifact containing generated JSON, a PNG
+plot, the mixture WAV, and separated-component WAVs.
+
+[Successful workflow run and artifact download](https://github.com/MasterDooom/unmix/actions/runs/38527118330).
+
+The synthetic experiment reported the following actual metrics. Correlation is
+mean absolute source-matched Pearson correlation; SI-SDR is mean source-matched
+scale-invariant signal-to-distortion ratio in dB.
+
+| Added-noise standard deviation fraction | ICA mean absolute correlation | PCA mean absolute correlation | ICA mean SI-SDR (dB) | PCA mean SI-SDR (dB) |
+|---:|---:|---:|---:|---:|
+| 0.00 | 0.999687 | 0.714744 | 32.1989 | 0.3704 |
+| 0.01 | 0.999503 | 0.714690 | 30.0916 | 0.3692 |
+| 0.03 | 0.998080 | 0.713765 | 24.1504 | 0.3475 |
+| 0.10 | 0.982267 | 0.704039 | 14.3941 | 0.1179 |
+
+The generated-audio demo used a sample rate of 8,000 Hz and recovered three
+components. FastICA converged in 5 iterations, and mean matched absolute
+correlation was reported as 1.0000. These are synthetic generated-source
+results and are not evidence of the same performance on arbitrary real-world
+speech/music recordings.
+
+The full workflow has now been verified remotely. The local Windows Python
+3.14 environment still lacks NumPy, and the bundled Python 3.12 environment
+lacks SciPy, SoundFile, Matplotlib, and pytest. Therefore, the local Windows
+environment cannot yet reproduce the full workflow without installing the
+declared dependencies. The CI artifact was uploaded successfully; the reported
+results come from actual generated signals, not hardcoded values.
+
+Previously recorded NumPy-only checks remain useful as separate numerical-core
+verification. They should not be confused with the full CI execution described
+above.
 
 ## Limitations
 
