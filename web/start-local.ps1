@@ -53,8 +53,25 @@ if (-not $CoreOnly) {
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "Track Lab model dependencies are not installed. Track Lab will return 503. Run this script without -CoreOnly to install them."
     }
+
     if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
-        Write-Warning "FFmpeg was not found on PATH. Some input formats and model workflows may fail. Install FFmpeg and reopen the terminal."
+        $Winget = Get-Command winget -ErrorAction SilentlyContinue
+        if (-not $Winget) {
+            throw "Track Lab needs FFmpeg. Install it from https://ffmpeg.org/download.html, reopen PowerShell, and rerun this script. Use -CoreOnly to run Mix Lab without Track Lab."
+        }
+        Write-Host "FFmpeg is required for Track Lab. Installing it using winget..." -ForegroundColor Cyan
+        & $Winget.Source install -e --id Gyan.FFmpeg --silent --accept-package-agreements --accept-source-agreements
+        if ($LASTEXITCODE -ne 0) {
+            throw "FFmpeg installation failed. Install it from https://ffmpeg.org/download.html, then rerun this script."
+        }
+        $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        $env:Path = "$machinePath;$userPath"
+        $wingetLinks = Join-Path $env:LOCALAPPDATA "Microsoft\WinGet\Links"
+        if (Test-Path $wingetLinks) { $env:Path = "$env:Path;$wingetLinks" }
+        if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            throw "FFmpeg was installed, but this terminal cannot find it yet. Close this terminal, open a new one, and rerun .\web\start-local.ps1."
+        }
     }
 }
 
