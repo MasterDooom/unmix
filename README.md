@@ -7,10 +7,10 @@ Recover independent audio sources from recordings containing mixtures of those s
 **Stages 1–5: end-to-end reproducible workflow.** The project provides validated
 mixing, whitening, symmetric FastICA, ambiguity-aware recovery metrics, WAV
 input/output, a command-line audio demo, and deterministic experiments.
-Runtime verification requires an environment with the dependencies in
-`requirements.txt`; the bundled Python 3.12 runtime verified the NumPy-only
-whitening/FastICA core, while full audio/plot/test execution still needs SciPy,
-SoundFile, Matplotlib, and pytest. See the report for details.
+The complete workflow was verified remotely on Python 3.12.15: all 33 tests
+passed, and the mixing demo, synthetic experiments, and generated-audio demo
+completed successfully. The local Windows Python environment still lacks the
+full dependency set; see the report and the [successful GitHub Actions run](https://github.com/MasterDooom/unmix/actions/runs/38527118330).
 
 ## Architecture
 
