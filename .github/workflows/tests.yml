@@ -9,6 +9,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      MPLBACKEND: Agg
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -25,3 +27,18 @@ jobs:
         run: python -m pytest -q
       - name: Run synthetic mixing demo
         run: python experiments/run_mixing_demo.py
+      - name: Run synthetic recovery experiments
+        run: python experiments/run_synthetic_experiments.py
+      - name: Run generated-audio separation demo
+        run: python experiments/run_audio_demo.py
+      - name: Upload generated experiment and audio artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unmix-generated-artifacts
+          if-no-files-found: warn
+          path: |
+            results/synthetic_metrics.json
+            results/synthetic_experiment_metadata.json
+            results/plots/synthetic_quality_vs_noise.png
+            results/audio_demo/**/*.wav

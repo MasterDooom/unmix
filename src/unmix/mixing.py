@@ -34,9 +34,9 @@ def mix_sources(sources: ArrayLike, mixing_matrix: ArrayLike) -> FloatArray:
     sources:
         Source samples with shape (n_sources, n_samples).
     mixing_matrix:
-        Matrix with shape (n_mixtures, n_sources). It must have full row
-        rank, so every requested mixture is linearly independent. For the
-        initial square ICA experiments, use an invertible matrix.
+        Matrix with shape (n_mixtures, n_sources). It must have full column
+        rank so every source remains identifiable. For the initial square ICA
+        experiments, use an invertible matrix.
 
     Returns
     -------
