@@ -65,6 +65,14 @@ TLS certificate validation and was not retried. Consequently no WAV, JSON, or
 plot artifacts are reported as measured; the scripts generate genuine metrics
 and artifacts only when run in an environment satisfying `requirements.txt`.
 
+The integration implementation was committed locally as
+`f26976e66f5a415231440487e69b887fd891c939`. Its expanded Python 3.12 GitHub
+Actions workflow runs pytest, all three demos, and uploads generated JSON, plot,
+and WAV artifacts. Publication and CI verification are pending: the one
+authorized `git push origin main` attempt failed before authentication with
+`getaddrinfo() thread failed to start`, so no CI run URL or remote artifact is
+claimed.
+
 ## Limitations
 
 Finite samples, additive noise, near-singular matrices, nonstationary audio,
