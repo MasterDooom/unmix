@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import shutil
+import subprocess
 import sys
 import time
 import uuid
@@ -66,14 +67,44 @@ async def _save_upload(upload: UploadFile, directory: Path) -> Path:
 
 
 def _validate_duration(path: Path) -> None:
-    """Reject files whose decoded duration is unsafe for the local service."""
+    """Reject unsafe durations, using ffprobe when libsndfile cannot read the format."""
     try:
         import soundfile as sf
 
         metadata = sf.info(path)
         duration = metadata.frames / metadata.samplerate
-    except (RuntimeError, ZeroDivisionError) as error:
-        raise ValueError(f"Could not inspect audio file {path.name}: {error}") from error
+    except (RuntimeError, ZeroDivisionError) as soundfile_error:
+        # Track Lab accepts formats such as M4A that libsndfile may not decode.
+        # Audio Separator already relies on FFmpeg, so use its metadata probe too.
+        ffprobe = shutil.which("ffprobe")
+        if ffprobe is None:
+            raise ValueError(
+                f"Could not inspect {path.name} with SoundFile. Install FFmpeg (ffprobe) "
+                f"for this format, or upload WAV/FLAC/MP3. Details: {soundfile_error}"
+            ) from soundfile_error
+        try:
+            probe = subprocess.run(
+                [
+                    ffprobe,
+                    "-v",
+                    "error",
+                    "-show_entries",
+                    "format=duration",
+                    "-of",
+                    "default=noprint_wrappers=1:nokey=1",
+                    str(path),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            duration = float(probe.stdout.strip())
+        except (subprocess.SubprocessError, ValueError) as probe_error:
+            raise ValueError(
+                f"Could not inspect {path.name} with SoundFile or FFmpeg. "
+                "Check that the file is valid and FFmpeg is installed."
+            ) from probe_error
     if not np.isfinite(duration) or duration <= 0 or duration > MAX_DURATION_SECONDS:
         raise ValueError(f"Audio duration must be between 0 and {MAX_DURATION_SECONDS // 60} minutes.")
 
