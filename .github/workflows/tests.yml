@@ -24,7 +24,7 @@ jobs:
       - name: Run unit tests
         env:
           PYTHONPATH: src
-        run: python -m pytest -q
+        run: python -m pytest -q tests
       - name: Run synthetic mixing demo
         run: python experiments/run_mixing_demo.py
       - name: Run synthetic recovery experiments
