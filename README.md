@@ -84,6 +84,28 @@ The separator will receive only `X`; the original `S` and known `A` are retained
 
 See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for the source of truth and implementation acceptance criteria.
 
+
+## Web application
+
+The web product has two separate workflows:
+
+- **Track Lab** uses an optional pretrained model to estimate stems from a finished song. These are estimates, not guaranteed reconstructions of the original studio tracks. The first model run can download weights and may take time.
+- **Mix Lab** creates a controlled linear mix from two or more clean mono source recordings, runs this repository's own PCA whitening and FastICA implementation, and evaluates recovery after separation.
+
+### Start locally on Windows
+
+From the repository root in PowerShell, run:
+
+```powershell
+.\web\start-local.ps1
+```
+
+The script installs the API/frontend dependencies, attempts to install the optional CPU Track Lab runtime and FFmpeg, starts the FastAPI backend and Vite frontend in separate terminals, checks the API health endpoint, and opens `http://localhost:5173`. The first launch can take several minutes; the first Track Lab separation may download model weights.
+
+Use `-CoreOnly` to skip the heavy pretrained-model dependencies and run Mix Lab only. In that mode Track Lab will remain unavailable until its optional dependencies are installed. Use `-SkipInstall` if dependencies are already installed.
+
+For API and frontend details, upload limits, retention behavior, and model attribution notes, see [web/README.md](web/README.md).
+
 ## Mathematical API
 
 All numerical APIs accept arrays shaped `(channels, samples)`. Use

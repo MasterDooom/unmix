@@ -13,3 +13,29 @@
 - Meta, [Demucs](https://github.com/facebookresearch/demucs) (repository inspected 2026-10-14, MIT). Inspected only to set scope: it is a trained hybrid waveform/spectrogram music-separation system and is not a comparable classical-ICA baseline. It is not used as a dependency or source of code.
 
 These references informed independent implementations; no third-party algorithm code was reused.
+
+## Website product-layer sources
+
+- JeffreyCA, [`spleeter-web`](https://github.com/JeffreyCA/spleeter-web)
+  (repository and MIT licence inspected 2026-10-14). Its React frontend plus
+  server/worker separation showed a credible queue-oriented product pattern, but
+  its Docker, Celery, Redis, and model stack are deliberately not adopted for
+  this small local workspace.
+- katspaugh, [`wavesurfer.js`](https://github.com/katspaugh/wavesurfer.js)
+  (repository documentation and BSD-3-Clause licence inspected 2026-10-14).
+  Its documented waveform player and spectrogram plugin informed the frontend's
+  playback, waveform, and spectral display only. WaveSurfer is not treated as an
+  audio separation or analysis engine; no source code was copied.
+- nomadkaraoke, [`python-audio-separator`](https://github.com/nomadkaraoke/python-audio-separator)
+  (repository documentation and MIT licence inspected 2026-10-14). Its documented
+  lazy `Separator` API, multiple supported model families, optional model weights,
+  and UVR attribution guidance informed the isolated Track Lab adapter. The first
+  release explicitly selects the documented
+  `model_mel_band_roformer_ep_3005_sdr_11.4360.ckpt` preset behind an optional
+  requirement; no Audio Separator implementation or model is a core dependency
+  or test fixture.
+- JonPark0, [`web_audio_splitter`](https://github.com/JonPark0/web_audio_splitter)
+  (repository architecture and licence notice inspected 2026-10-14). Its
+  FastAPI-oriented separation-service shape and bounded job-processing approach
+  informed the thin local API/timeout design. No code or model integration was
+  reused.
