@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
@@ -75,3 +76,15 @@ def test_track_lab_surfaces_optional_backend_error(monkeypatch) -> None:
         )
     assert response.status_code == 503
     assert "optional backend" in response.json()["detail"]
+
+def test_duration_validation_uses_ffprobe_for_unsupported_formats(monkeypatch, tmp_path) -> None:
+    path = tmp_path / "song.m4a"
+    path.write_bytes(b"test content")
+    monkeypatch.setattr(main.shutil, "which", lambda name: "ffprobe" if name == "ffprobe" else None)
+    monkeypatch.setattr(
+        main.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(stdout="12.5\n"),
+    )
+    main._validate_duration(path)
+
