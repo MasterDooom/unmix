@@ -48,6 +48,9 @@ Recover independent audio sources from recordings that contain linear mixtures o
   separator then retains that leading PCA subspace before FastICA.
 - Runtime verification remains environment-dependent. Do not treat static
   compilation as evidence that numerical or audio behavior is correct.
+- The optional `web/` product layer exposes the tested ICA pipeline only for
+  controlled Mix Lab inputs; any pretrained Track Lab model is a distinct,
+  opt-in adapter and must describe results as estimates rather than originals.
 
 ## Initial acceptance criteria
 - Sources use shape `(n_sources, n_samples)`; mixtures use shape `(n_mixtures, n_samples)`.

@@ -1,0 +1,3 @@
+# Optional: installs PyTorch/model dependencies and may download weights on first use.
+# Keep this separate from the core ICA and ordinary API test environments.
+audio-separator>=0.45

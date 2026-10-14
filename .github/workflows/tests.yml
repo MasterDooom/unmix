@@ -42,3 +42,32 @@ jobs:
             results/synthetic_experiment_metadata.json
             results/plots/synthetic_quality_vs_noise.png
             results/audio_demo/**/*.wav
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install backend dependencies
+        run: python -m pip install -r web/requirements.txt
+      - name: Test the FastAPI workflow without the optional model
+        env:
+          PYTHONPATH: web/backend:src
+        run: python -m pytest -q web/backend/tests
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: web/frontend/package.json
+      - name: Test and build frontend
+        working-directory: web/frontend
+        run: |
+          npm install --no-audit --no-fund
+          npm run test
+          npm run build

@@ -84,6 +84,51 @@ The separator will receive only `X`; the original `S` and known `A` are retained
 
 See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for the source of truth and implementation acceptance criteria.
 
+## Local web workspace
+
+The optional website layer provides two deliberately different workflows:
+
+- **Track Lab** sends one finished track to an *optional* pretrained model adapter.
+  Its returned stems are estimates, not verified original instrument tracks. The
+  core ICA package has no model dependency.
+- **Mix Lab** uploads two or more known clean, mono sources, creates `X = A @ S`
+  from the user-provided full-column-rank matrix, runs this repository's FastICA,
+  and evaluates recovery only after separation. It supports any source count the
+  matrix and audio resources can reasonably handle; it is not fixed at three.
+
+Install the core plus web API dependencies, then start the API and Vite server in
+two shells. The frontend proxies `/api` and `/media` to the local API.
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r web\requirements.txt
+$env:PYTHONPATH = "web\backend;src"
+uvicorn app.main:app --reload --port 8000
+```
+
+```powershell
+Set-Location web\frontend
+npm install
+npm run dev
+```
+
+Open the printed Vite address (normally `http://localhost:5173`). Run the API
+workflow tests with `PYTHONPATH="web/backend;src" python -m pytest -q
+web/backend/tests`, and the browser checks with `npm run test` / `npm run build`.
+The Track Lab adapter is intentionally not installed by the command above:
+
+```powershell
+pip install -r web\requirements-track-lab.txt
+```
+
+That optional adapter uses Audio Separator's documented default preset. It can
+download model weights on first use and depends on a suitable FFmpeg setup; run
+it only after reviewing the model licence/attribution notes in `web/README.md`.
+Uploads are limited to 100 MB per file and live in temporary per-job directories
+under `web/runtime/`; the server removes expired jobs on later requests. Upload
+only material you have rights to use.
+
 ## Mathematical API
 
 All numerical APIs accept arrays shaped `(channels, samples)`. Use
