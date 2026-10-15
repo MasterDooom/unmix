@@ -20,7 +20,6 @@ jobs:
     timeout-minutes: 40
     env:
       PYTHONPATH: web/backend:src
-      AUDIO_SEPARATOR_MODEL_DIR: ${{ runner.temp }}/unmix-audio-separator-models
       OMP_NUM_THREADS: "2"
       MKL_NUM_THREADS: "2"
       OPENBLAS_NUM_THREADS: "1"
@@ -46,6 +45,5 @@ jobs:
           python -m pip install -r web/requirements.txt
           python -m pip install -r web/requirements-track-lab.txt
           python -c "import audio_separator.separator, torch; print('torch:', torch.__version__)"
-          mkdir -p "$AUDIO_SEPARATOR_MODEL_DIR"
       - name: Run real model inference through FastAPI and verify downloaded stems
         run: python experiments/track_lab_smoke.py
