@@ -3,3 +3,4 @@
 # This is intentionally separate from the lightweight Mix Lab/API test environment.
 # First use downloads model weights; FFmpeg must also be installed and on PATH.
 audio-separator[cpu]>=0.45,<1
+audioread>=3.0.1,<4

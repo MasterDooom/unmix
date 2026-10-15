@@ -64,7 +64,8 @@ def main() -> None:
         result = response.json()
         assert result["preset"], result
         stems = result["stems"]
-        assert len(stems) >= 2, result
+        assert len(stems) == 2, result
+        assert {stem["name"] for stem in stems} == {"Vocals", "Instrumental"}, result
 
         verified = []
         for stem in stems:
@@ -73,14 +74,15 @@ def main() -> None:
                 f"Media URL {stem['url']} returned HTTP {media.status_code}"
             )
             assert len(media.content) > 44, f"Empty audio output for {stem['name']}"
-            metadata = sf.info(io.BytesIO(media.content), format="WAV")
-            assert metadata.frames > 0 and metadata.samplerate > 0, stem
+            assert media.content[:4] == b"RIFF" and media.content[8:12] == b"WAVE", (
+                f"Stem {stem['name']} is not a WAV file"
+            )
             decoded, rate = sf.read(io.BytesIO(media.content), dtype="float32")
-            assert decoded.size > 0 and np.isfinite(decoded).all(), stem
+            assert rate > 0 and decoded.size > 0 and np.isfinite(decoded).all(), stem
             verified.append({
                 "name": stem["name"],
                 "sample_rate": rate,
-                "frames": int(metadata.frames),
+                "sample_count": int(decoded.shape[0]),
                 "download_bytes": len(media.content),
             })
 

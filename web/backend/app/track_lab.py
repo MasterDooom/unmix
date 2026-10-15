@@ -10,7 +10,9 @@ from pathlib import Path
 from threading import Lock
 from typing import Any
 
-TRACK_LAB_MODEL = "model_mel_band_roformer_ep_3005_sdr_11.4360.ckpt"
+# Prefer a compact ONNX MDX vocal/instrumental model for responsive CPU use.
+# Large RoFormer checkpoints remain an opt-in higher-compute choice, not default.
+TRACK_LAB_MODEL = "UVR-MDX-NET-Inst_HQ_5.onnx"
 
 _SEPARATOR: Any | None = None
 _SEPARATOR_LOCK = Lock()
@@ -21,11 +23,13 @@ class TrackLabUnavailable(RuntimeError):
 
 
 def separate_track(input_path: Path, output_directory: Path) -> list[Path]:
-    """Run Audio Separator's documented two-stem Mel-Band RoFormer model.
+    """Run Audio Separator's ONNX MDX vocal/instrumental model.
 
-    Model weights are cached outside temporary job directories, and the loaded
-    model is reused for subsequent jobs. Inference is serialized because a
-    single PyTorch model instance should not be mutated by concurrent requests.
+    The ONNX preset is chosen as the default because CPU inference for 1 GB
+    RoFormer checkpoints was too slow for ordinary song-length use. Model
+    weights are cached outside temporary job directories, and the loaded model
+    is reused for subsequent jobs. Inference is serialized because one
+    separator instance should not be mutated by concurrent requests.
     """
     global _SEPARATOR
 

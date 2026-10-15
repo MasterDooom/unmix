@@ -24,16 +24,18 @@ component count. Known files are used only for metrics after separation.
 **Track Lab** uses `web/backend/app/track_lab.py`, a lazy optional adapter for
 [`audio-separator`](https://github.com/nomadkaraoke/python-audio-separator).
 The default Windows launcher installs `web/requirements-track-lab.txt` (unless
-`-CoreOnly` is passed). The selected CPU runtime is
-`audio-separator[cpu]`; the current inference code uses the documented default
-Mel-Band RoFormer model
-`model_mel_band_roformer_ep_3005_sdr_11.4360.ckpt`. The model is downloaded
-on first use and cached in the user's `~/.cache/unmix/audio-separator-models`
-directory (overridable with `AUDIO_SEPARATOR_MODEL_DIR`), outside temporary
-per-job output folders. One model instance is reused and inference is serialized
-to reduce repeat load time and avoid concurrent mutation of a single model.
-The UI labels results as estimates; this vocal/instrumental checkpoint should
-not be described as a four-stem drums/bass/vocals/other separator.
+`-CoreOnly` is passed). The selected runtime is CPU-only PyTorch plus
+`audio-separator[cpu]` and the required `audioread` dependency. Track Lab
+defaults to `UVR-MDX-NET-Inst_HQ_5.onnx`, a lighter ONNX vocal/instrumental
+preset selected for more responsive CPU operation than the ~1 GB RoFormer
+checkpoint tested during development. We explicitly install CPU-only PyTorch
+wheels before the model package to avoid downloading the CUDA stack on ordinary
+machines. The model is downloaded on first use and cached in the user's
+`~/.cache/unmix/audio-separator-models` directory (overridable with
+`AUDIO_SEPARATOR_MODEL_DIR`), outside temporary per-job output folders. One
+model instance is reused and inference is serialized. The UI labels results as
+estimates; the selected preset does not separate drums, bass, and instruments
+into individual stems.
 
 Audio Separator is MIT licensed. Its project asks users of its default or
 Ultimate Vocal Remover-derived models to credit the relevant UVR developers; see
