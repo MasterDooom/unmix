@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import json
+import logging
 import shutil
 import subprocess
 import sys
@@ -23,6 +25,7 @@ from unmix.pipeline import run_audio_separation
 
 from .track_lab import TRACK_LAB_MODEL, TrackLabUnavailable, separate_track
 
+logger = logging.getLogger(__name__)
 RUNTIME = ROOT / "web" / "runtime"
 MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 MAX_DURATION_SECONDS = 20 * 60
@@ -111,7 +114,9 @@ def _validate_duration(path: Path) -> None:
 
 def _matrix(text: str | None, source_count: int) -> np.ndarray:
     if not text:
-        return np.eye(source_count, dtype=np.float64)
+        matrix = np.full((source_count, source_count), 0.35, dtype=np.float64)
+        np.fill_diagonal(matrix, 1.0)
+        return matrix
     try:
         matrix = np.asarray(json.loads(text), dtype=np.float64)
     except (json.JSONDecodeError, TypeError, ValueError) as error:
@@ -126,7 +131,11 @@ def _matrix(text: str | None, source_count: int) -> np.ndarray:
 
 
 def _run_mix(paths: list[Path], matrix: np.ndarray, output: Path) -> dict[str, object]:
-    run = run_audio_separation(paths, matrix, output, random_state=17, tol=1e-7)
+    # A source may be uploaded in stereo; ICA expects one variable per source,
+    # so explicitly average channels rather than failing on ordinary stereo files.
+    run = run_audio_separation(
+        paths, matrix, output, channel_policy="mixdown", random_state=17, tol=1e-7
+    )
     relative = lambda path: f"/media/{path.relative_to(RUNTIME).as_posix()}"
     return {
         "sample_rate": run.sample_rate,
@@ -144,7 +153,19 @@ def _run_mix(paths: list[Path], matrix: np.ndarray, output: Path) -> dict[str, o
 
 @app.get("/api/health")
 def health() -> dict[str, object]:
-    return {"status": "ok", "track_lab_optional": True}
+    try:
+        model_runtime_installed = (
+            importlib.util.find_spec("audio_separator") is not None
+            and importlib.util.find_spec("audio_separator.separator") is not None
+        )
+    except (ImportError, ModuleNotFoundError, ValueError):
+        model_runtime_installed = False
+    return {
+        "status": "ok",
+        "track_lab_optional": True,
+        "track_lab_dependencies_installed": model_runtime_installed,
+        "ffmpeg_available": shutil.which("ffmpeg") is not None,
+    }
 
 
 @app.post("/api/mix-lab/separate")
@@ -166,11 +187,17 @@ async def mix_lab(
         shutil.rmtree(job, ignore_errors=True)
         raise
     except asyncio.TimeoutError as error:
-        shutil.rmtree(job, ignore_errors=True)
+        # asyncio cannot stop work already running in a worker thread. Keep the
+        # job directory so the worker is not racing a deletion; TTL cleanup reaps it.
+        logger.warning("Mix Lab job %s timed out; worker may still be finishing", job.name)
         raise HTTPException(504, "Mix Lab exceeded its 120-second processing limit.") from error
     except (ValueError, FloatingPointError, RuntimeError) as error:
         shutil.rmtree(job, ignore_errors=True)
         raise HTTPException(422, str(error)) from error
+    except Exception as error:
+        logger.exception("Unexpected Mix Lab failure for job %s", job.name)
+        shutil.rmtree(job, ignore_errors=True)
+        raise HTTPException(500, "Mix Lab failed unexpectedly. Check the FastAPI terminal for details.") from error
 
 
 @app.post("/api/track-lab/separate")
@@ -182,16 +209,45 @@ async def track_lab(track: UploadFile = File(...)) -> dict[str, object]:
         source = await _save_upload(track, job)
         _validate_duration(source)
         stems = await asyncio.wait_for(asyncio.to_thread(separate_track, source, job / "separated"), timeout=600)
+        if len(stems) < 2 or any(not stem.is_file() or stem.stat().st_size <= 44 for stem in stems):
+            raise RuntimeError("The pretrained model did not produce two valid audio stems.")
+        import re
+
+        def display_name(stem: Path) -> str:
+            match = re.search(r"\(([^)]+)\)", stem.stem)
+            if match:
+                return match.group(1).strip().title()
+            lowered = stem.stem.lower()
+            if "vocal" in lowered:
+                return "Vocals"
+            if "instrumental" in lowered:
+                return "Instrumental"
+            return stem.stem.replace("_", " ")
+
         return {
             "preset": TRACK_LAB_MODEL,
-            "stems": [{"name": stem.stem, "url": f"/media/{stem.relative_to(RUNTIME).as_posix()}"} for stem in stems],
+            "stems": [
+                {
+                    "name": display_name(stem),
+                    "url": f"/media/{stem.relative_to(RUNTIME).as_posix()}",
+                }
+                for stem in stems
+            ],
         }
     except TrackLabUnavailable as error:
         shutil.rmtree(job, ignore_errors=True)
         raise HTTPException(503, str(error)) from error
     except asyncio.TimeoutError as error:
-        shutil.rmtree(job, ignore_errors=True)
+        # Do not delete a folder while the underlying thread may still write stems.
+        logger.warning("Track Lab job %s timed out; worker may still be finishing", job.name)
         raise HTTPException(504, "Track Lab exceeded its 10-minute processing limit.") from error
     except (ValueError, RuntimeError) as error:
         shutil.rmtree(job, ignore_errors=True)
         raise HTTPException(422, str(error)) from error
+    except Exception as error:
+        logger.exception("Unexpected Track Lab inference failure for job %s", job.name)
+        shutil.rmtree(job, ignore_errors=True)
+        raise HTTPException(
+            500,
+            "Track Lab inference failed. Check the FastAPI terminal; verify model download, FFmpeg, and available RAM.",
+        ) from error
