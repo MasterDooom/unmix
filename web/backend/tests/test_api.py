@@ -24,6 +24,7 @@ def test_health_reports_optional_track_lab() -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ok"
+    assert body["api_contract_version"] == 2
     assert body["track_lab_optional"] is True
     assert isinstance(body["track_lab_dependencies_installed"], bool)
     assert isinstance(body["ffmpeg_available"], bool)
@@ -90,6 +91,34 @@ def test_mix_lab_runs_pipeline_and_returns_media_urls(monkeypatch) -> None:
         )
     assert response.status_code == 200
     assert response.json()["metrics"]["mean_absolute_correlation"] == 0.99
+
+
+def test_track_lab_returns_named_playable_stems(monkeypatch, tmp_path) -> None:
+    def fake_separate(source: Path, output: Path) -> list[Path]:
+        output.mkdir(parents=True, exist_ok=True)
+        sample_rate = 8_000
+        time_axis = np.arange(2_000) / sample_rate
+        outputs = []
+        for label, frequency in [("Vocals", 440), ("Instrumental", 110)]:
+            path = output / f"source_({label})_model_test.wav"
+            sf.write(path, 0.2 * np.sin(2 * np.pi * frequency * time_axis), sample_rate)
+            outputs.append(path)
+        return outputs
+
+    monkeypatch.setattr(main, "separate_track", fake_separate)
+    _skip_duration_check(monkeypatch)
+    with TestClient(main.app) as client:
+        response = client.post(
+            "/api/track-lab/separate",
+            files={"track": ("song.wav", _wav_bytes(np.ones(2_000)), "audio/wav")},
+        )
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert [stem["name"] for stem in result["stems"]] == ["Vocals", "Instrumental"]
+        for stem in result["stems"]:
+            media = client.get(stem["url"])
+            assert media.status_code == 200
+            assert len(media.content) > 44
 
 
 def test_track_lab_surfaces_optional_backend_error(monkeypatch) -> None:
