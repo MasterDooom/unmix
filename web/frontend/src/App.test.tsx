@@ -25,6 +25,7 @@ describe("Unmix workspace", () => {
         files: [
           new File(["a"], "one.wav", { type: "audio/wav" }),
           new File(["b"], "two.wav", { type: "audio/wav" }),
+          new File(["c"], "three.wav", { type: "audio/wav" }),
         ],
       },
     });
@@ -37,7 +38,10 @@ describe("Unmix workspace", () => {
       "Mixing matrix JSON",
     ) as HTMLTextAreaElement;
 
-    expect(matrixInput.value).toContain("[");
+    const matrix = JSON.parse(matrixInput.value) as number[][];
+    expect(matrix).toHaveLength(3);
+    expect(matrix.every((row) => row.length === 3)).toBe(true);
+    expect(matrix[0]).toEqual([1, 0.35, 0.35]);
     expect(
       screen.getByRole("button", { name: /run ica recovery/i }),
     ).toBeEnabled();
