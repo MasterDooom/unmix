@@ -22,7 +22,31 @@ def test_health_reports_optional_track_lab() -> None:
     with TestClient(main.app) as client:
         response = client.get("/api/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "track_lab_optional": True}
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["track_lab_optional"] is True
+    assert isinstance(body["track_lab_dependencies_installed"], bool)
+    assert isinstance(body["ffmpeg_available"], bool)
+
+
+
+
+def test_default_mixing_matrix_is_nontrivial_and_full_rank() -> None:
+    matrix = main._matrix(None, 3)
+    assert matrix.shape == (3, 3)
+    np.testing.assert_allclose(np.diag(matrix), np.ones(3))
+    np.testing.assert_allclose(matrix[matrix != 1.0], np.full(6, 0.35))
+    assert np.linalg.matrix_rank(matrix) == 3
+
+
+def test_track_lab_invalid_file_returns_client_error_not_internal_server_error(monkeypatch) -> None:
+    with TestClient(main.app) as client:
+        response = client.post(
+            "/api/track-lab/separate",
+            files={"track": ("song.exe", b"not audio", "application/octet-stream")},
+        )
+    assert response.status_code == 415
+    assert "Unsupported audio format" in response.json()["detail"]
 
 
 def test_mix_lab_rejects_rank_deficient_matrix(monkeypatch) -> None:
