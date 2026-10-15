@@ -137,7 +137,7 @@ def test_mix_lab_processes_real_audio_and_serves_result_files() -> None:
             "/api/mix-lab/separate",
             data={"mixing_matrix": matrix},
             files=[
-                ("sources", ("first.wav", _wav_bytes(sources[0]), "audio/wav")),
+                ("sources", ("first.wav", _wav_bytes(np.column_stack([sources[0], 0.8 * sources[0]])), "audio/wav")),
                 ("sources", ("second.wav", _wav_bytes(sources[1]), "audio/wav")),
             ],
         )
