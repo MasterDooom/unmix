@@ -68,6 +68,7 @@ def test_mix_lab_runs_pipeline_and_returns_media_urls(monkeypatch) -> None:
     def fake_run(paths: list[Path], matrix, output: Path) -> dict[str, object]:
         assert len(paths) == 2
         assert matrix.shape == (2, 2)
+        np.testing.assert_allclose(matrix, [[1.0, 0.35], [0.35, 1.0]])
         return {
             "sample_rate": 8_000,
             "converged": True,
