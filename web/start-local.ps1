@@ -78,7 +78,7 @@ if (-not $SkipInstall) {
         -not (Test-Path $FrontendModules) -or
         -not (Test-Path $ViteExecutable) -or
         -not (Test-Path $VitestExecutable) -or
-        (Test-Path $LockFile -and (Get-Item $LockFile).LastWriteTime -gt (Get-Item $FrontendModules).LastWriteTime)
+        ((Test-Path $LockFile) -and ((Get-Item $LockFile).LastWriteTime -gt (Get-Item $FrontendModules).LastWriteTime))
     )
     if ($DependencyInstallNeeded) {
         Write-Host ""
