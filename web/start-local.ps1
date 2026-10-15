@@ -10,14 +10,46 @@ $RootDir = Split-Path -Parent $WebDir
 $BackendDir = Join-Path $WebDir "backend"
 $FrontendDir = Join-Path $WebDir "frontend"
 $SourceDir = Join-Path $RootDir "src"
-$PythonExe = Join-Path $RootDir ".venv\Scripts\python.exe"
+$VenvDir = Join-Path $RootDir ".venv"
+$PythonExe = Join-Path $VenvDir "Scripts\python.exe"
 
 if (-not (Test-Path $PythonExe)) {
-    $PythonCommand = Get-Command python -ErrorAction SilentlyContinue
-    if (-not $PythonCommand) {
-        throw "Python was not found. Install Python 3.10-3.13 or create the repository .venv first."
+    Write-Host "Creating a project-local Python environment (preferring Python 3.12)..." -ForegroundColor Cyan
+    $PythonLauncher = Get-Command py -ErrorAction SilentlyContinue
+    $CreatedEnvironment = $false
+
+    if ($PythonLauncher) {
+        foreach ($Version in @("3.12", "3.11", "3.13", "3.10")) {
+            & $PythonLauncher.Source "-$Version" -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) and sys.version_info < (3, 14) else 1)" 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                & $PythonLauncher.Source "-$Version" -m venv $VenvDir
+                if ($LASTEXITCODE -eq 0 -and (Test-Path $PythonExe)) {
+                    $CreatedEnvironment = $true
+                    break
+                }
+            }
+        }
     }
-    $PythonExe = $PythonCommand.Source
+
+    if (-not $CreatedEnvironment) {
+        $PythonCommand = Get-Command python -ErrorAction SilentlyContinue
+        if (-not $PythonCommand) {
+            throw "Python 3.10-3.13 was not found. Install Python 3.12 from https://www.python.org/downloads/ and rerun this script."
+        }
+        & $PythonCommand.Source -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) and sys.version_info < (3, 14) else 1)"
+        if ($LASTEXITCODE -ne 0) {
+            throw "Unmix requires Python 3.10-3.13. Python 3.14 is not supported by the current Track Lab model stack."
+        }
+        & $PythonCommand.Source -m venv $VenvDir
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $PythonExe)) {
+            throw "Could not create the .venv environment. Check that this Python installation includes the venv module."
+        }
+    }
+}
+
+& $PythonExe -c "import sys; sys.exit(0 if sys.version_info >= (3, 10) and sys.version_info < (3, 14) else 1)"
+if ($LASTEXITCODE -ne 0) {
+    throw "The existing .venv uses an unsupported Python version. Keep its files backed up and recreate it using Python 3.12 before continuing."
 }
 if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
     throw "npm was not found. Install Node.js 20 LTS, then open a new PowerShell window."
@@ -26,6 +58,8 @@ if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
 if (-not $SkipInstall) {
     Write-Host ""
     Write-Host "[1/4] Installing core API and signal-processing dependencies..." -ForegroundColor Cyan
+    & $PythonExe -m pip install --upgrade pip
+    if ($LASTEXITCODE -ne 0) { throw "Could not upgrade pip inside .venv." }
     & $PythonExe -m pip install -r (Join-Path $WebDir "requirements.txt")
     if ($LASTEXITCODE -ne 0) { throw "Core Python dependency installation failed." }
 
@@ -36,12 +70,22 @@ if (-not $SkipInstall) {
         if ($LASTEXITCODE -ne 0) { throw "Track Lab dependency installation failed. See the pip error above." }
     }
 
-    if (-not (Test-Path (Join-Path $FrontendDir "node_modules"))) {
+    $FrontendModules = Join-Path $FrontendDir "node_modules"
+    $ViteExecutable = Join-Path $FrontendModules ".bin\vite.cmd"
+    $VitestExecutable = Join-Path $FrontendModules ".bin\vitest.cmd"
+    $LockFile = Join-Path $FrontendDir "package-lock.json"
+    $DependencyInstallNeeded = (
+        -not (Test-Path $FrontendModules) -or
+        -not (Test-Path $ViteExecutable) -or
+        -not (Test-Path $VitestExecutable) -or
+        (Test-Path $LockFile -and (Get-Item $LockFile).LastWriteTime -gt (Get-Item $FrontendModules).LastWriteTime)
+    )
+    if ($DependencyInstallNeeded) {
         Write-Host ""
-        Write-Host "Installing frontend dependencies..." -ForegroundColor Cyan
+        Write-Host "Installing frontend dependencies from package-lock.json..." -ForegroundColor Cyan
         Push-Location $FrontendDir
         try {
-            & npm install --no-audit --no-fund
+            & npm ci --no-audit --no-fund
             if ($LASTEXITCODE -ne 0) { throw "Frontend dependency installation failed." }
         }
         finally { Pop-Location }
@@ -77,11 +121,14 @@ if (-not $CoreOnly) {
 
 $healthUri = "http://127.0.0.1:8000/api/health"
 $apiReady = $false
-try {
-    $health = Invoke-RestMethod -Uri $healthUri -TimeoutSec 2
-    $apiReady = $health.status -eq "ok"
+$health = $null
+try { $health = Invoke-RestMethod -Uri $healthUri -TimeoutSec 2 } catch { }
+if ($health -and $health.status -eq "ok") {
+    if ($health.api_contract_version -ne 2) {
+        throw "A stale Unmix API is already running on port 8000. Close its FastAPI terminal, then rerun this launcher."
+    }
+    $apiReady = $true
 }
-catch { }
 
 if (-not $apiReady) {
     Write-Host ""
@@ -92,11 +139,15 @@ if (-not $apiReady) {
 
     for ($attempt = 0; $attempt -lt 45; $attempt++) {
         Start-Sleep -Seconds 1
-        try {
-            $health = Invoke-RestMethod -Uri $healthUri -TimeoutSec 2
-            if ($health.status -eq "ok") { $apiReady = $true; break }
+        $health = $null
+        try { $health = Invoke-RestMethod -Uri $healthUri -TimeoutSec 2 } catch { }
+        if ($health -and $health.status -eq "ok") {
+            if ($health.api_contract_version -ne 2) {
+                throw "An older Unmix API is occupying port 8000. Close its FastAPI terminal and rerun this launcher."
+            }
+            $apiReady = $true
+            break
         }
-        catch { }
     }
 }
 if (-not $apiReady) {
