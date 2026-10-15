@@ -82,7 +82,7 @@ def main() -> None:
             verified.append({
                 "name": stem["name"],
                 "sample_rate": rate,
-                "frames": int(metadata.frames),
+                "sample_count": int(decoded.shape[0]),
                 "download_bytes": len(media.content),
             })
 
