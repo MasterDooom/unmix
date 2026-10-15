@@ -65,9 +65,17 @@ if (-not $SkipInstall) {
 
     if (-not $CoreOnly) {
         Write-Host ""
-        Write-Host "Installing the optional CPU Track Lab model stack. This can take several minutes and uses substantial disk space..." -ForegroundColor Cyan
+        Write-Host "Installing CPU-only PyTorch first, then the Track Lab model dependencies. This can take several minutes..." -ForegroundColor Cyan
+        & $PythonExe -m pip install --upgrade --index-url https://download.pytorch.org/whl/cpu torch torchvision
+        if ($LASTEXITCODE -ne 0) { throw "CPU-only PyTorch installation failed. Check Python version, disk space, and network access." }
+
         & $PythonExe -m pip install -r (Join-Path $WebDir "requirements-track-lab.txt")
         if ($LASTEXITCODE -ne 0) { throw "Track Lab dependency installation failed. See the pip error above." }
+
+        & $PythonExe -c "import torch; print('PyTorch:', torch.__version__, '| CUDA build:', torch.version.cuda)"
+        if ($LASTEXITCODE -ne 0) { throw "The Track Lab PyTorch runtime could not be imported." }
+        & $PythonExe -c "import audio_separator.separator, audioread"
+        if ($LASTEXITCODE -ne 0) { throw "The Track Lab runtime imports failed. Keep the full error output to diagnose the missing package." }
     }
 
     $FrontendModules = Join-Path $FrontendDir "node_modules"
