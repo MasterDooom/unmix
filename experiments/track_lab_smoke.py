@@ -64,7 +64,8 @@ def main() -> None:
         result = response.json()
         assert result["preset"], result
         stems = result["stems"]
-        assert len(stems) >= 2, result
+        assert len(stems) == 2, result
+        assert {stem["name"] for stem in stems} == {"Vocals", "Instrumental"}, result
 
         verified = []
         for stem in stems:
