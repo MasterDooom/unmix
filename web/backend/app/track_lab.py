@@ -1,7 +1,11 @@
-"""Optional Track Lab adapter; heavy pretrained inference is never a core dependency."""
+"""Optional pretrained stem estimation through Audio Separator.
+
+The core Mix Lab and FastICA implementation never depend on this heavy runtime.
+"""
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 TRACK_LAB_MODEL = "model_mel_band_roformer_ep_3005_sdr_11.4360.ckpt"
@@ -12,21 +16,61 @@ class TrackLabUnavailable(RuntimeError):
 
 
 def separate_track(input_path: Path, output_directory: Path) -> list[Path]:
-    """Run Audio Separator's documented default two-stem preset when installed.
+    """Run Audio Separator's documented two-stem Mel-Band RoFormer model.
 
-    The named Mel-Band RoFormer checkpoint keeps this initial preset explicit.
-    Model weights may download on first run, so this function is deliberately
-    imported only by the Track Lab route and must be exercised in an opt-in
-    integration environment.
+    Model weights are cached outside the temporary per-job output directory. This
+    avoids redownloading large checkpoints for every song or deleting them during
+    normal expired-job cleanup.
     """
     try:
         from audio_separator.separator import Separator
     except ImportError as error:
         raise TrackLabUnavailable(
-            "Track Lab is optional. Install web/requirements-track-lab.txt and "
-            "configure FFmpeg/model storage before running pretrained separation."
+            "Track Lab's model runtime is missing. Run web/start-local.ps1 without "
+            "-CoreOnly, or install web/requirements-track-lab.txt in the active Python environment."
         ) from error
+
+    output_directory = output_directory.resolve()
     output_directory.mkdir(parents=True, exist_ok=True)
-    separator = Separator(output_dir=str(output_directory))
+    configured_cache = os.environ.get("AUDIO_SEPARATOR_MODEL_DIR")
+    model_cache = (
+        Path(configured_cache).expanduser()
+        if configured_cache
+        else Path.home() / ".cache" / "unmix" / "audio-separator-models"
+    )
+    model_cache = model_cache.resolve()
+    model_cache.mkdir(parents=True, exist_ok=True)
+
+    separator = Separator(
+        output_dir=str(output_directory),
+        model_file_dir=str(model_cache),
+        output_format="WAV",
+    )
     separator.load_model(model_filename=TRACK_LAB_MODEL)
-    return [output_directory / Path(name).name for name in separator.separate(str(input_path))]
+    reported_outputs = separator.separate(str(input_path))
+
+    # Audio Separator versions may report an absolute path or a filename. Resolve
+    # either form against the explicit job output directory and verify real files.
+    stems: list[Path] = []
+    for reported in reported_outputs or []:
+        candidate = Path(reported)
+        if not candidate.is_absolute():
+            candidate = output_directory / candidate.name
+        candidate = candidate.resolve()
+        if not candidate.is_file() or candidate.stat().st_size <= 44:
+            fallback = (output_directory / Path(reported).name).resolve()
+            candidate = fallback
+        if candidate.is_file() and candidate.stat().st_size > 44:
+            stems.append(candidate)
+
+    # Defend against model/runtime API changes that return unexpected paths.
+    stems = list(dict.fromkeys(stems))
+    if len(stems) < 2:
+        produced = sorted(path for path in output_directory.glob("*.wav") if path.stat().st_size > 44)
+        stems = list(dict.fromkeys(produced))
+    if len(stems) < 2:
+        raise RuntimeError(
+            "Audio Separator completed without producing two readable WAV stems. "
+            "Check the model, FFmpeg, and FastAPI terminal logs."
+        )
+    return stems
