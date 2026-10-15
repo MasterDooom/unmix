@@ -234,6 +234,9 @@ async def track_lab(track: UploadFile = File(...)) -> dict[str, object]:
                 for stem in stems
             ],
         }
+    except HTTPException:
+        shutil.rmtree(job, ignore_errors=True)
+        raise
     except TrackLabUnavailable as error:
         shutil.rmtree(job, ignore_errors=True)
         raise HTTPException(503, str(error)) from error
