@@ -7,6 +7,7 @@ type Stem = { name: string; url: string };
 type TrackResult = { stems: Stem[] };
 type ApiHealth = {
   status: string;
+  api_contract_version: number;
   track_lab_optional: boolean;
   track_lab_dependencies_installed: boolean;
   ffmpeg_available: boolean;
