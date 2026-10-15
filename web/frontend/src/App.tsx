@@ -1,5 +1,6 @@
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StemLane } from "./components/StemLane";
+import WaveSurfer from "wavesurfer.js";
 
 type Mode = "track" | "mix";
 type Stem = { name: string; url: string };
@@ -56,9 +57,38 @@ function UploadPanel({ mode, onTrack, onMix }: { mode: Mode; onTrack: (file: Fil
 function StemBoard({ stems, original, mixture }: { stems: Stem[]; original?: Stem; mixture?: Stem }) {
   const [solo, setSolo] = useState<string | null>(null);
   const [syncTime, setSyncTime] = useState(0);
+  const [syncPlaying, setSyncPlaying] = useState(false);
+  const [clockSource, setClockSource] = useState<string | null>(null);
+  const players = useRef(new Map<string, WaveSurfer>());
   const rows = [...(original ? [original] : []), ...(mixture ? [mixture] : []), ...stems];
-  return <section className="results" aria-live="polite"><div className="section-title"><div><p className="eyebrow">PLAYBACK DESK</p><h2>Waveform + spectral detail</h2></div><p>Each lane shares a visual playback cursor; solo, mute, level, and download use actual returned audio files.</p></div>
-    {rows.map((stem, index) => <StemLane key={`${stem.name}-${stem.url}`} id={`${stem.name}-${index}`} label={stem.name.replace(/_/g, " ")} url={stem.url} color={colors[index % colors.length]} isSoloed={solo === `${stem.name}-${index}`} anotherStemSoloed={solo !== null} onSolo={setSolo} syncTime={syncTime} onTime={setSyncTime} />)}
+
+  const registerPlayer = useCallback((id: string, player: WaveSurfer | null) => {
+    if (player) players.current.set(id, player);
+    else players.current.delete(id);
+  }, []);
+  const stopPlayback = useCallback(() => {
+    setSyncPlaying(false);
+    players.current.forEach((player) => player.pause());
+  }, []);
+  const togglePlayback = (id: string) => {
+    if (syncPlaying) {
+      stopPlayback();
+      return;
+    }
+    setClockSource(id);
+    setSyncPlaying(true);
+    // Invoke play synchronously in the click handler so browser audio autoplay
+    // policies see the real user gesture for every lane.
+    players.current.forEach((player) => {
+      if (!player.isPlaying()) void player.play().catch(() => undefined);
+    });
+  };
+
+  return <section className="results" aria-live="polite"><div className="section-title"><div><p className="eyebrow">PLAYBACK DESK</p><h2>Waveform + spectral detail</h2></div><p>All lanes play in sync. Solo, mute, level, and download operate on the actual audio files.</p></div>
+    {rows.map((stem, index) => {
+      const id = `${stem.name}-${index}`;
+      return <StemLane key={`${stem.name}-${stem.url}`} id={id} label={stem.name.replace(/_/g, " ")} url={stem.url} color={colors[index % colors.length]} isSoloed={solo === id} anotherStemSoloed={solo !== null} onSolo={setSolo} syncTime={syncTime} onTime={setSyncTime} isClockSource={clockSource === id} onRegisterPlayer={registerPlayer} onTogglePlayback={togglePlayback} onPlaybackEnded={stopPlayback} />;
+    })}
   </section>;
 }
 
