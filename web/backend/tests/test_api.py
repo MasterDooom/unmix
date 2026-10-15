@@ -22,7 +22,32 @@ def test_health_reports_optional_track_lab() -> None:
     with TestClient(main.app) as client:
         response = client.get("/api/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "track_lab_optional": True}
+    body = response.json()
+    assert body["status"] == "ok"
+    assert body["api_contract_version"] == 2
+    assert body["track_lab_optional"] is True
+    assert isinstance(body["track_lab_dependencies_installed"], bool)
+    assert isinstance(body["ffmpeg_available"], bool)
+
+
+
+
+def test_default_mixing_matrix_is_nontrivial_and_full_rank() -> None:
+    matrix = main._matrix(None, 3)
+    assert matrix.shape == (3, 3)
+    np.testing.assert_allclose(np.diag(matrix), np.ones(3))
+    np.testing.assert_allclose(matrix[matrix != 1.0], np.full(6, 0.35))
+    assert np.linalg.matrix_rank(matrix) == 3
+
+
+def test_track_lab_invalid_file_returns_client_error_not_internal_server_error(monkeypatch) -> None:
+    with TestClient(main.app) as client:
+        response = client.post(
+            "/api/track-lab/separate",
+            files={"track": ("song.exe", b"not audio", "application/octet-stream")},
+        )
+    assert response.status_code == 415
+    assert "Unsupported audio format" in response.json()["detail"]
 
 
 def test_mix_lab_rejects_rank_deficient_matrix(monkeypatch) -> None:
@@ -44,6 +69,7 @@ def test_mix_lab_runs_pipeline_and_returns_media_urls(monkeypatch) -> None:
     def fake_run(paths: list[Path], matrix, output: Path) -> dict[str, object]:
         assert len(paths) == 2
         assert matrix.shape == (2, 2)
+        np.testing.assert_allclose(matrix, [[1.0, 0.35], [0.35, 1.0]])
         return {
             "sample_rate": 8_000,
             "converged": True,
@@ -65,6 +91,34 @@ def test_mix_lab_runs_pipeline_and_returns_media_urls(monkeypatch) -> None:
         )
     assert response.status_code == 200
     assert response.json()["metrics"]["mean_absolute_correlation"] == 0.99
+
+
+def test_track_lab_returns_named_playable_stems(monkeypatch, tmp_path) -> None:
+    def fake_separate(source: Path, output: Path) -> list[Path]:
+        output.mkdir(parents=True, exist_ok=True)
+        sample_rate = 8_000
+        time_axis = np.arange(2_000) / sample_rate
+        outputs = []
+        for label, frequency in [("Vocals", 440), ("Instrumental", 110)]:
+            path = output / f"source_({label})_model_test.wav"
+            sf.write(path, 0.2 * np.sin(2 * np.pi * frequency * time_axis), sample_rate)
+            outputs.append(path)
+        return outputs
+
+    monkeypatch.setattr(main, "separate_track", fake_separate)
+    _skip_duration_check(monkeypatch)
+    with TestClient(main.app) as client:
+        response = client.post(
+            "/api/track-lab/separate",
+            files={"track": ("song.wav", _wav_bytes(np.ones(2_000)), "audio/wav")},
+        )
+        assert response.status_code == 200, response.text
+        result = response.json()
+        assert [stem["name"] for stem in result["stems"]] == ["Vocals", "Instrumental"]
+        for stem in result["stems"]:
+            media = client.get(stem["url"])
+            assert media.status_code == 200
+            assert len(media.content) > 44
 
 
 def test_track_lab_surfaces_optional_backend_error(monkeypatch) -> None:
@@ -113,7 +167,7 @@ def test_mix_lab_processes_real_audio_and_serves_result_files() -> None:
             "/api/mix-lab/separate",
             data={"mixing_matrix": matrix},
             files=[
-                ("sources", ("first.wav", _wav_bytes(sources[0]), "audio/wav")),
+                ("sources", ("first.wav", _wav_bytes(np.column_stack([sources[0], 0.8 * sources[0]])), "audio/wav")),
                 ("sources", ("second.wav", _wav_bytes(sources[1]), "audio/wav")),
             ],
         )

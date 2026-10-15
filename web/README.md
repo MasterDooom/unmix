@@ -13,20 +13,27 @@ The API is at `http://localhost:8000`; the Vite workspace is normally at
 
 **Mix Lab** accepts a variable number of source files and JSON mixing matrix
 `A` with shape `(n_mixtures, n_sources)`. It rejects non-finite, rank-deficient,
-or underdetermined matrices before processing. It loads sources, creates `A @ S`,
-then gives only observed mixtures plus the expected component count to FastICA.
-Known files are used only after that point for recovery metrics. Files are
-currently processed as mono because the established audio pipeline intentionally
-rejects multichannel source material by default.
+or underdetermined matrices before processing. Its default matrix has 1.0 on the
+diagonal and 0.35 off-diagonal, so sources are genuinely cross-mixed without
+requiring the user to edit the matrix. Stereo source files are explicitly
+averaged to mono before mixing; this is a convenience, not a stereo separation
+algorithm, and phase-cancelled material should be converted to a good mono source
+before upload. The separator receives only the resulting mixtures and expected
+component count. Known files are used only for metrics after separation.
 
 **Track Lab** uses `web/backend/app/track_lab.py`, a lazy optional adapter for
 [`audio-separator`](https://github.com/nomadkaraoke/python-audio-separator).
-Install `web/requirements-track-lab.txt` separately. Its default model and any
-first-run model-weight download are not exercised by ordinary tests. Audio
-Separator documents support for several model families; this application exposes
-one explicit `model_mel_band_roformer_ep_3005_sdr_11.4360.ckpt` preset first
-rather than promising arbitrary instruments or model choices. The user interface
-labels its outputs as estimates.
+The default Windows launcher installs `web/requirements-track-lab.txt` (unless
+`-CoreOnly` is passed). The selected CPU runtime is
+`audio-separator[cpu]`; the current inference code uses the documented default
+Mel-Band RoFormer model
+`model_mel_band_roformer_ep_3005_sdr_11.4360.ckpt`. The model is downloaded
+on first use and cached in the user's `~/.cache/unmix/audio-separator-models`
+directory (overridable with `AUDIO_SEPARATOR_MODEL_DIR`), outside temporary
+per-job output folders. One model instance is reused and inference is serialized
+to reduce repeat load time and avoid concurrent mutation of a single model.
+The UI labels results as estimates; this vocal/instrumental checkpoint should
+not be described as a four-stem drums/bass/vocals/other separator.
 
 Audio Separator is MIT licensed. Its project asks users of its default or
 Ultimate Vocal Remover-derived models to credit the relevant UVR developers; see
@@ -53,7 +60,11 @@ npm run test
 npm run build
 ```
 
-The API tests mock the heavyweight pretrained model and the audio pipeline where
-needed; they test upload validation, matrix rejection, response format, and the
-optional-backend failure state. The real model must be tested separately after
-the optional installation is complete.
+The regular CI API tests include an actual Mix Lab upload-to-FastICA-to-download
+round trip, using generated WAV sources. The separate
+`.github/workflows/track-lab-smoke.yml` job installs FFmpeg and the real CPU model
+runtime, generates a short synthetic stereo fixture, uploads it through FastAPI,
+runs pretrained inference, and verifies the returned audio downloads. This is an
+infrastructure/model smoke test, not a quality benchmark on real music; run it
+from GitHub Actions to verify model loading and output compatibility after
+changing the model adapter or dependencies.

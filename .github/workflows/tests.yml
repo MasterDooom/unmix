@@ -65,6 +65,16 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: web/frontend/package.json
+      - name: Validate Windows launcher syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("web/start-local.ps1", [ref]$tokens, [ref]$parseErrors) | Out-Null
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | ForEach-Object { Write-Error $_ }
+            exit 1
+          }
       - name: Test and build frontend
         working-directory: web/frontend
         run: |

@@ -12,19 +12,43 @@ type StemLaneProps = {
   onSolo: (id: string | null) => void;
   syncTime: number;
   onTime: (time: number) => void;
+  isClockSource: boolean;
+  onRegisterPlayer: (id: string, player: WaveSurfer | null) => void;
+  onTogglePlayback: (id: string) => void;
+  onPlaybackEnded: () => void;
 };
 
-/** A real WaveSurfer player with per-lane level, mute, solo, and download controls. */
-export function StemLane({ id, label, url, color, isSoloed, anotherStemSoloed, onSolo, syncTime, onTime }: StemLaneProps) {
+/** A WaveSurfer lane with shared playback, level, mute, solo, and download controls. */
+export function StemLane({
+  id,
+  label,
+  url,
+  color,
+  isSoloed,
+  anotherStemSoloed,
+  onSolo,
+  syncTime,
+  onTime,
+  isClockSource,
+  onRegisterPlayer,
+  onTogglePlayback,
+  onPlaybackEnded,
+}: StemLaneProps) {
   const waveform = useRef<HTMLDivElement>(null);
   const instance = useRef<WaveSurfer | null>(null);
+  const clockSourceRef = useRef(isClockSource);
   const [ready, setReady] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(0.85);
 
   useEffect(() => {
+    clockSourceRef.current = isClockSource;
+  }, [isClockSource]);
+
+  useEffect(() => {
     if (!waveform.current) return;
+    setReady(false);
     const wavesurfer = WaveSurfer.create({
       container: waveform.current,
       url,
@@ -38,13 +62,23 @@ export function StemLane({ id, label, url, color, isSoloed, anotherStemSoloed, o
       plugins: [Spectrogram.create({ height: 46, labels: true, labelsColor: "#6e8696" })],
     });
     instance.current = wavesurfer;
+    onRegisterPlayer(id, wavesurfer);
     wavesurfer.on("ready", () => setReady(true));
     wavesurfer.on("play", () => setPlaying(true));
     wavesurfer.on("pause", () => setPlaying(false));
-    wavesurfer.on("finish", () => setPlaying(false));
-    wavesurfer.on("timeupdate", onTime);
-    return () => wavesurfer.destroy();
-  }, [url, color, onTime]);
+    wavesurfer.on("finish", () => {
+      setPlaying(false);
+      onPlaybackEnded();
+    });
+    wavesurfer.on("timeupdate", (time) => {
+      if (clockSourceRef.current) onTime(time);
+    });
+    return () => {
+      onRegisterPlayer(id, null);
+      instance.current = null;
+      wavesurfer.destroy();
+    };
+  }, [url, color, onTime, onRegisterPlayer, onPlaybackEnded, id]);
 
   useEffect(() => {
     const audible = !muted && (!anotherStemSoloed || isSoloed);
@@ -60,7 +94,7 @@ export function StemLane({ id, label, url, color, isSoloed, anotherStemSoloed, o
     <div className="stem-head">
       <div><p className="eyebrow">STEM</p><h3>{label}</h3></div>
       <div className="lane-actions">
-        <button className="icon-button" disabled={!ready} onClick={() => instance.current?.playPause()} aria-label={`${playing ? "Pause" : "Play"} ${label}`}>{playing ? "Ⅱ" : "▶"}</button>
+        <button className="icon-button" disabled={!ready} onClick={() => onTogglePlayback(id)} aria-label={`${playing ? "Pause" : "Play"} ${label}`}>{playing ? "Ⅱ" : "▶"}</button>
         <button className={isSoloed ? "toggle active" : "toggle"} onClick={() => onSolo(isSoloed ? null : id)} aria-pressed={isSoloed}>Solo</button>
         <button className={muted ? "toggle active" : "toggle"} onClick={() => setMuted(!muted)} aria-pressed={muted}>Mute</button>
         <label className="volume">Level <input aria-label={`${label} volume`} type="range" min="0" max="1" step="0.01" value={volume} onChange={(event) => setVolume(Number(event.target.value))} /></label>

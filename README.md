@@ -90,7 +90,7 @@ See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for the source of truth and impleme
 The web product has two separate workflows:
 
 - **Track Lab** uses an optional pretrained model to estimate stems from a finished song. These are estimates, not guaranteed reconstructions of the original studio tracks. The first model run can download weights and may take time.
-- **Mix Lab** creates a controlled linear mix from two or more clean mono source recordings, runs this repository's own PCA whitening and FastICA implementation, and evaluates recovery after separation.
+- **Mix Lab** creates a controlled linear mix from two or more source recordings, runs this repository's own PCA whitening and FastICA implementation, and evaluates recovery after separation. Stereo uploads are averaged to mono for this ICA experiment; this is not a stereo separation algorithm. The default matrix has nonzero off-diagonal values so it actually mixes the selected sources.
 
 ### Start locally on Windows
 
@@ -100,7 +100,7 @@ From the repository root in PowerShell, run:
 .\web\start-local.ps1
 ```
 
-The script installs the API/frontend dependencies, attempts to install the optional CPU Track Lab runtime and FFmpeg, starts the FastAPI backend and Vite frontend in separate terminals, checks the API health endpoint, and opens `http://localhost:5173`. The first launch can take several minutes; the first Track Lab separation may download model weights.
+The script creates a project-local `.venv` using Python 3.12 when available (with 3.10-3.13 fallbacks), installs the API/frontend dependencies, attempts to install the optional CPU Track Lab runtime and FFmpeg, starts the FastAPI backend and Vite frontend in separate terminals, verifies the backend contract/health endpoint, and opens `http://localhost:5173`. It checks for a stale server left on port 8000 rather than silently using an older API. The first launch can take several minutes; the first Track Lab separation may download model weights.
 
 Use `-CoreOnly` to skip the heavy pretrained-model dependencies and run Mix Lab only. In that mode Track Lab will remain unavailable until its optional dependencies are installed. Use `-SkipInstall` if dependencies are already installed.
 
