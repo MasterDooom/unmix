@@ -162,6 +162,7 @@ def health() -> dict[str, object]:
         model_runtime_installed = False
     return {
         "status": "ok",
+        "api_contract_version": 2,
         "track_lab_optional": True,
         "track_lab_dependencies_installed": model_runtime_installed,
         "ffmpeg_available": shutil.which("ffmpeg") is not None,
