@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -99,7 +101,7 @@ jobs:
           with urllib.request.urlopen(base, timeout=20) as response:
               html = response.read().decode("utf-8")
               assert response.status == 200
-          assets = re.findall(r'(?:src|href)="([^"]+/assets/[^"]+\\.(?:js|css))"', html)
+          assets = re.findall(r'(?:src|href)="([^"]+/assets/[^"]+\.(?:js|css))"', html)
           assert any(asset.endswith(".js") for asset in assets), "deployed HTML has no JavaScript bundle"
           assert any(asset.endswith(".css") for asset in assets), "deployed HTML has no CSS bundle"
           for asset in assets:
