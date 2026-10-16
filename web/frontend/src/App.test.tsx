@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import App from "./App";
 
@@ -45,6 +45,28 @@ describe("Unmix workspace", () => {
     expect(
       screen.getByRole("button", { name: /run ica recovery/i }),
     ).toBeEnabled();
+  });
+
+  it("disables Track Lab uploads when health reports that the hosted model runtime is missing", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: "ok",
+        api_contract_version: 2,
+        track_lab_optional: true,
+        track_lab_dependencies_installed: false,
+        ffmpeg_available: true,
+      }),
+    }));
+    try {
+      render(<App />);
+      expect(await screen.findByText(/optional pretrained model runtime is not installed/i)).toBeInTheDocument();
+      expect(screen.getByLabelText("Track file")).toBeDisabled();
+      expect(screen.getByRole("button", { name: /estimate stems/i })).toBeDisabled();
+    } finally {
+      cleanup();
+      vi.unstubAllGlobals();
+    }
   });
 
   it("explains how to start the API when a Track Lab upload cannot connect", async () => {

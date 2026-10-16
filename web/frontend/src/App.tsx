@@ -43,16 +43,16 @@ function explainFailure(reason: unknown) {
   return message;
 }
 
-function UploadPanel({ mode, onTrack, onMix }: { mode: Mode; onTrack: (file: File) => void; onMix: (files: FileList) => void }) {
+function UploadPanel({ mode, onTrack, onMix, trackDisabled = false }: { mode: Mode; onTrack: (file: File) => void; onMix: (files: FileList) => void; trackDisabled?: boolean }) {
   const [track, setTrack] = useState<File | null>(null);
   const [sources, setSources] = useState<FileList | null>(null);
   const submit = (event: FormEvent) => { event.preventDefault(); if (mode === "track" && track) onTrack(track); if (mode === "mix" && sources) onMix(sources); };
   return <form className="upload-panel" onSubmit={submit}>
     <div className="upload-copy"><p className="eyebrow">{mode === "track" ? "PRETRAINED STEM ESTIMATION" : "FROM-SCRATCH ICA EXPERIMENT"}</p><h2>{mode === "track" ? "Open a finished track" : "Bring in clean source tracks"}</h2><p>{mode === "track" ? "Estimate the stems a supported model returns. They are estimates, not the original studio tracks." : "Create a known linear mix and measure blind recovery without assuming a fixed source count."}</p></div>
-    <label className="dropzone"><input aria-label={mode === "track" ? "Track file" : "Source files"} type="file" accept=".wav,.flac,.mp3,.m4a,.ogg,audio/wav,audio/flac,audio/mpeg,audio/mp4,audio/ogg" multiple={mode === "mix"} onChange={(event: ChangeEvent<HTMLInputElement>) => mode === "track" ? setTrack(event.target.files?.[0] ?? null) : setSources(event.target.files)} />
+    <label className="dropzone"><input aria-label={mode === "track" ? "Track file" : "Source files"} type="file" accept=".wav,.flac,.mp3,.m4a,.ogg,audio/wav,audio/flac,audio/mpeg,audio/mp4,audio/ogg" multiple={mode === "mix"} disabled={mode === "track" && trackDisabled} onChange={(event: ChangeEvent<HTMLInputElement>) => mode === "track" ? setTrack(event.target.files?.[0] ?? null) : setSources(event.target.files)} />
       <span>⇧</span><strong>{mode === "track" ? track?.name ?? "Choose an audio file" : sources?.length ? `${sources.length} source files selected` : "Choose two or more source files"}</strong><small>WAV, FLAC, MP3, M4A, or OGG · 100 MB per file</small>
     </label>
-    <button className="primary" type="submit" disabled={mode === "track" ? !track : !sources || sources.length < 2}>{mode === "track" ? "Estimate stems" : "Set up Mix Lab"}</button>
+    <button className="primary" type="submit" disabled={mode === "track" ? (!track || trackDisabled) : !sources || sources.length < 2}>{mode === "track" ? "Estimate stems" : "Set up Mix Lab"}</button>
   </form>;
 }
 
@@ -128,6 +128,8 @@ export default function App() {
     return () => { active = false; };
   }, []);
 
+  const trackLabUnavailable = Boolean(health && (!health.track_lab_dependencies_installed || !health.ffmpeg_available));
+
   const sourcePreviews = useMemo(() => mixResult ? sourceFiles.map((file) => ({ name: `source · ${file.name}`, url: URL.createObjectURL(file) })) : [], [sourceFiles, mixResult]);
   const original = useMemo(() => trackResult && trackFile ? { name: `original · ${trackFile.name}`, url: URL.createObjectURL(trackFile) } : undefined, [trackFile, trackResult]);
 
@@ -152,9 +154,10 @@ export default function App() {
     </div></header>
     <div id="top" className="hero"><div><p className="eyebrow">MUSIC REVERSE-ENGINEERING WORKSPACE</p><h1>See inside the <em>mix.</em></h1><p className="lede">A rigorous home for source-separation experiments: model-based stem estimates for finished tracks, and a transparent FastICA lab for controlled mixtures.</p></div><aside><span>01 / {mode === "track" ? "TRACK" : "MIX"}</span><p>{mode === "track" ? "Model outputs are useful estimates. They cannot establish original production stems." : "Known source files stay out of the separator and return only for evaluation."}</p></aside></div>
     <section className="workbench"><div className="mode-tabs"><button className={mode === "track" ? "selected" : ""} onClick={() => setMode("track")}>Track Lab <small>pretrained</small></button><button className={mode === "mix" ? "selected" : ""} onClick={() => setMode("mix")}>Mix Lab <small>FastICA</small></button></div>
-      <UploadPanel mode={mode} onTrack={chooseTrack} onMix={chooseMix} />
+      <UploadPanel mode={mode} onTrack={chooseTrack} onMix={chooseMix} trackDisabled={trackLabUnavailable} />
       {mode === "mix" && sourceFiles.length >= 2 && <section className="matrix"><div><p className="eyebrow">MIXING MATRIX A</p><h2>Define observed channels</h2><p>Rows are mixtures; columns are sources. The default matrix deliberately cross-mixes sources. Stereo uploads are averaged to mono before ICA. The matrix must be finite, full-column-rank, and have at least as many rows as columns.</p></div><textarea aria-label="Mixing matrix JSON" value={matrix} onChange={(event) => setMatrix(event.target.value)} spellCheck={false} /><button className="primary" onClick={runMix} disabled={processing}>Run ICA recovery</button></section>}
-      {health && mode === "track" && (!health.track_lab_dependencies_installed || !health.ffmpeg_available) && <div className="notice error" role="status">Track Lab needs its optional model runtime and FFmpeg. Run <code>web\start-local.ps1</code> without <code>-CoreOnly</code>, or use Mix Lab while the model is unavailable.</div>}
+       {health && mode === "track" && !health.track_lab_dependencies_installed && <div className="notice error" role="status">Track Lab is unavailable on this API because its optional pretrained model runtime is not installed. The upload is disabled to avoid a request that cannot succeed. Run <code>web\start-local.ps1</code> locally without <code>-CoreOnly</code>, or use Mix Lab.</div>}
+       {health && mode === "track" && health.track_lab_dependencies_installed && !health.ffmpeg_available && <div className="notice error" role="status">Track Lab runtime is installed, but FFmpeg is missing from this API environment. Install FFmpeg before attempting separation, or use Mix Lab.</div>}
       {processing && <div className="notice working"><span className="spinner" /> Processing audio. First-time Track Lab model loading may take several minutes.</div>}
       {error && <div className="notice error" role="alert">{error}</div>}
       {mode === "track" && trackResult && <StemBoard stems={trackResult.stems} original={original} />}
