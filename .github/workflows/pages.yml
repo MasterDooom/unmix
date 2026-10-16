@@ -5,6 +5,10 @@ on:
     branches: [main]
     paths:
       - "web/frontend/**"
+      - "web/backend/**"
+      - "web/requirements*.txt"
+      - "requirements.txt"
+      - "src/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
