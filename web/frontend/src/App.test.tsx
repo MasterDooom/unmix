@@ -47,6 +47,27 @@ describe("Unmix workspace", () => {
     ).toBeEnabled();
   });
 
+  it("disables Track Lab uploads when health reports that the hosted model runtime is missing", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: "ok",
+        api_contract_version: 2,
+        track_lab_optional: true,
+        track_lab_dependencies_installed: false,
+        ffmpeg_available: true,
+      }),
+    }));
+    try {
+      render(<App />);
+      expect(await screen.findByText(/optional pretrained model runtime is not installed/i)).toBeInTheDocument();
+      expect(screen.getByLabelText("Track file")).toBeDisabled();
+      expect(screen.getByRole("button", { name: /estimate stems/i })).toBeDisabled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("explains how to start the API when a Track Lab upload cannot connect", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
     try {
