@@ -124,7 +124,7 @@ jobs:
           count = sample_rate
           sources = [
               [int(12000 * (2 * (i % 101) / 100 - 1)) for i in range(count)],
-              [int(12000 * (0.8 if ((i * 73 + i * i * 13) % 211) > 105 else -0.8) for i in range(count)],
+              [int(12000 * (0.8 if ((i * 73 + i * i * 13) % 211) > 105 else -0.8)) for i in range(count)],
           ]
           for name, samples in zip(("unmix-a.wav", "unmix-b.wav"), sources):
               with wave.open("/tmp/" + name, "wb") as audio:
