@@ -87,3 +87,69 @@ jobs:
             -D cors-headers.txt -o /dev/null
           grep -iq '^access-control-allow-origin: https://masterdooom.github.io' cors-headers.txt
           echo "Production origin is allowed by API CORS."
+
+      - name: Verify deployed frontend HTML and assets
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import re
+          import urllib.request
+
+          base = "https://masterdooom.github.io/unmix/"
+          with urllib.request.urlopen(base, timeout=20) as response:
+              html = response.read().decode("utf-8")
+              assert response.status == 200
+          assets = re.findall(r'(?:src|href)="([^"]+/assets/[^"]+\\.(?:js|css))"', html)
+          assert any(asset.endswith(".js") for asset in assets), "deployed HTML has no JavaScript bundle"
+          assert any(asset.endswith(".css") for asset in assets), "deployed HTML has no CSS bundle"
+          for asset in assets:
+              with urllib.request.urlopen("https://masterdooom.github.io" + asset, timeout=20) as response:
+                  payload = response.read()
+                  assert response.status == 200 and payload, f"asset failed: {asset}"
+          print(f"Frontend HTML and {len(assets)} built assets returned successfully.")
+          PY
+      - name: Exercise live Mix Lab upload, separation, and media downloads
+        env:
+          API_BASE: ${{ vars.UNMIX_API_BASE || 'https://unmix-api.onrender.com' }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import math
+          import struct
+          import wave
+
+          sample_rate = 8000
+          count = sample_rate
+          sources = [
+              [int(12000 * (2 * (i % 101) / 100 - 1)) for i in range(count)],
+              [int(12000 * (0.8 if ((i * 73 + i * i * 13) % 211) > 105 else -0.8) for i in range(count)],
+          ]
+          for name, samples in zip(("unmix-a.wav", "unmix-b.wav"), sources):
+              with wave.open("/tmp/" + name, "wb") as audio:
+                  audio.setnchannels(1)
+                  audio.setsampwidth(2)
+                  audio.setframerate(sample_rate)
+                  audio.writeframes(b"".join(struct.pack("<h", sample) for sample in samples))
+          PY
+          curl --connect-timeout 10 --max-time 110 -fsS "$API_BASE/api/mix-lab/separate" \
+            -F "sources=@/tmp/unmix-a.wav;type=audio/wav" \
+            -F "sources=@/tmp/unmix-b.wav;type=audio/wav" \
+            -o mix-result.json
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          base = os.environ["API_BASE"].rstrip("/")
+          result = json.load(open("mix-result.json"))
+          assert result.get("mixture_url", "").startswith("/media/"), result
+          stems = result.get("stems", [])
+          assert len(stems) >= 2, result
+          urls = [result["mixture_url"], *[stem["url"] for stem in stems]]
+          for path in urls:
+              assert path.startswith("/media/"), path
+              with urllib.request.urlopen(base + path, timeout=30) as response:
+                  audio = response.read()
+                  assert response.status == 200 and audio[:4] == b"RIFF" and len(audio) > 44, path
+          print(f"Live Mix Lab passed: {len(stems)} stems, {len(urls)} playable WAV downloads, {result.get('iterations')} ICA iterations.")
+          PY
