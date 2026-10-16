@@ -60,7 +60,7 @@ describe("Unmix workspace", () => {
     }));
     try {
       render(<App />);
-      expect(await screen.findByText(/optional pretrained model runtime is not installed/i)).toBeInTheDocument();
+      expect(await screen.findByText(/this api does not have the optional pretrained model runtime installed/i)).toBeInTheDocument();
       expect(screen.getByLabelText("Track file")).toBeDisabled();
       expect(screen.getByRole("button", { name: /estimate stems/i })).toBeDisabled();
     } finally {
