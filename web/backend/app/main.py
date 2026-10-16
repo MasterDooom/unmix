@@ -168,6 +168,7 @@ def health() -> dict[str, object]:
         "status": "ok",
         "api_contract_version": 2,
         "track_lab_optional": True,
+        "track_lab_enabled": os.getenv("UNMIX_TRACK_LAB_ENABLED", "true").strip().lower() in {"1", "true", "yes", "on"},
         "track_lab_dependencies_installed": model_runtime_installed,
         "ffmpeg_available": shutil.which("ffmpeg") is not None,
     }
@@ -207,6 +208,11 @@ async def mix_lab(
 
 @app.post("/api/track-lab/separate")
 async def track_lab(track: UploadFile = File(...)) -> dict[str, object]:
+    if os.getenv("UNMIX_TRACK_LAB_ENABLED", "true").strip().lower() not in {"1", "true", "yes", "on"}:
+        raise HTTPException(
+            503,
+            "Track Lab inference is disabled on this 512 MiB hosted instance to protect API availability. Use local Track Lab or the hosted Mix Lab.",
+        )
     _cleanup_expired_jobs()
     job = RUNTIME / f"track-{uuid.uuid4().hex}"
     job.mkdir()
