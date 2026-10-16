@@ -26,6 +26,7 @@ def test_health_reports_optional_track_lab() -> None:
     assert body["status"] == "ok"
     assert body["api_contract_version"] == 2
     assert body["track_lab_optional"] is True
+    assert isinstance(body["track_lab_enabled"], bool)
     assert isinstance(body["track_lab_dependencies_installed"], bool)
     assert isinstance(body["ffmpeg_available"], bool)
 
@@ -184,3 +185,17 @@ def test_mix_lab_processes_real_audio_and_serves_result_files() -> None:
             assert media.status_code == 200
             assert len(media.content) > 44
 
+
+
+def test_track_lab_can_be_disabled_on_low_memory_host(monkeypatch) -> None:
+    monkeypatch.setenv("UNMIX_TRACK_LAB_ENABLED", "false")
+    with TestClient(main.app) as client:
+        health = client.get("/api/health")
+        response = client.post(
+            "/api/track-lab/separate",
+            files={"track": ("song.wav", _wav_bytes(np.ones(2_000)), "audio/wav")},
+        )
+    assert health.status_code == 200
+    assert health.json()["track_lab_enabled"] is False
+    assert response.status_code == 503
+    assert "512 MiB" in response.json()["detail"]
