@@ -53,8 +53,8 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install backend dependencies
-        run: python -m pip install -r web/requirements.txt
+      - name: Install core backend dependencies
+        run: python -m pip install -r web/requirements-core.txt
       - name: Test the FastAPI workflow without the optional model
         env:
           PYTHONPATH: web/backend:src
