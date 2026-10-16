@@ -1,11 +1,7 @@
-# Keep PyTorch on CPU wheels so Render does not install the CUDA stack.
---extra-index-url https://download.pytorch.org/whl/cpu
+# Production Render runtime is deliberately core-only: the service has a 512 MiB RAM limit.
+# Keep pretrained inference dependencies in requirements-track-lab.txt for local machines with more memory.
 -r ../requirements.txt
 fastapi>=0.115,<1
 uvicorn[standard]>=0.30,<1
 python-multipart>=0.0.9,<1
 httpx>=0.27,<1
-# Track Lab is enabled in production; pin a matched CPU-only PyTorch pair.
-torch==2.7.1+cpu
-torchvision==0.22.1+cpu
--r requirements-track-lab.txt
