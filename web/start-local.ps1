@@ -60,7 +60,7 @@ if (-not $SkipInstall) {
     Write-Host "[1/4] Installing core API and signal-processing dependencies..." -ForegroundColor Cyan
     & $PythonExe -m pip install --upgrade pip
     if ($LASTEXITCODE -ne 0) { throw "Could not upgrade pip inside .venv." }
-    & $PythonExe -m pip install -r (Join-Path $WebDir "requirements.txt")
+    & $PythonExe -m pip install -r (Join-Path $WebDir "requirements-core.txt")
     if ($LASTEXITCODE -ne 0) { throw "Core Python dependency installation failed." }
 
     if (-not $CoreOnly) {
