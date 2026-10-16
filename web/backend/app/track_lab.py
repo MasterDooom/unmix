@@ -69,16 +69,27 @@ def separate_track(input_path: Path, output_directory: Path) -> list[Path]:
 
         reported_outputs = _SEPARATOR.separate(str(input_path))
 
-    # Audio Separator versions may report an absolute path or a filename. Resolve
-    # either form against the explicit job output directory and verify real files.
+    # Audio Separator versions may report an absolute path or a filename.
+    # Only accept outputs contained in this request's dedicated output directory:
+    # trusting an arbitrary absolute path could expose another job's files.
     stems: list[Path] = []
     for reported in reported_outputs or []:
-        candidate = Path(reported)
-        if not candidate.is_absolute():
-            candidate = output_directory / candidate.name
-        candidate = candidate.resolve()
-        if not candidate.is_file() or candidate.stat().st_size <= 44:
-            candidate = (output_directory / Path(reported).name).resolve()
+        reported_path = Path(reported)
+        if reported_path.is_absolute():
+            candidate = reported_path.resolve()
+            try:
+                candidate.relative_to(output_directory)
+            except ValueError:
+                continue
+            if not candidate.is_file() or candidate.stat().st_size <= 44:
+                candidate = (output_directory / reported_path.name).resolve()
+        else:
+            candidate = (output_directory / reported_path.name).resolve()
+
+        try:
+            candidate.relative_to(output_directory)
+        except ValueError:
+            continue
         if candidate.is_file() and candidate.stat().st_size > 44:
             stems.append(candidate)
 
