@@ -12,3 +12,26 @@ main { min-height: 100vh; max-width: 1440px; margin: auto; padding: 0 4vw 3rem; 
 .notice { margin: 0 2.2rem 2rem; padding: 1rem; border-radius: 9px; } .working { color: #bdeaff; background: #103142; } .error { color: #ffc7d3; background: #3a1724; border: 1px solid #84384c; } .spinner { display: inline-block; width: .8rem; height: .8rem; margin-right: .55rem; border: 2px solid #7ee1ff; border-right-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
 .results, .metrics { padding: 2.2rem; border-top: 1px solid #20343b; } .section-title { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: 1.4rem; } .section-title > p { max-width: 300px; margin: 0; color: #829da5; font-size: .85rem; line-height: 1.5; } .stem-lane { --stem: #3be3b1; margin-bottom: 1rem; padding: 1rem; border: 1px solid color-mix(in srgb, var(--stem) 30%, #263d45); border-radius: 11px; background: #091419; } .stem-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; } .stem-head .eyebrow { color: var(--stem); font-size: .58rem; } h3 { margin: 0; text-transform: capitalize; font-size: 1rem; } .lane-actions { display: flex; align-items: center; flex-wrap: wrap; gap: .45rem; } .icon-button, .toggle, .download { padding: .35rem .55rem; border: 1px solid #38535c; border-radius: 5px; background: #102025; color: #c7e0e3; font-size: .73rem; text-decoration: none; } .toggle.active { border-color: var(--stem); color: var(--stem); background: #15322d; } .volume { color: #8da6ad; font-size: .7rem; } .volume input { width: 66px; accent-color: var(--stem); vertical-align: middle; } .wave-shell { margin-top: .85rem; min-height: 122px; overflow: hidden; background: #071014; border-radius: 6px; } .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); margin: 1.4rem 0; border-top: 1px solid #263f47; border-left: 1px solid #263f47; } .metric-grid div { padding: 1rem; border-right: 1px solid #263f47; border-bottom: 1px solid #263f47; } .metric-grid strong { display: block; color: #73e3c3; font-size: 1.4rem; } .metric-grid span, .metric-note { color: #89a5ad; font-size: .78rem; } details { padding: 0 2.2rem 2.2rem; color: #a9c1c6; } summary { cursor: pointer; margin-bottom: 1rem; } footer { padding: 2rem 0; color: #708b94; font-size: .75rem; text-align: center; }
 @media (max-width: 760px) { main { padding: 0 1rem 2rem; } header { gap: .75rem; } .header-status { display: none; } .hero, .upload-panel, .matrix { grid-template-columns: 1fr; padding: 3rem 1.25rem; gap: 1.4rem; } .upload-panel .primary { grid-column: auto; } .matrix { padding-top: 1.5rem; } .section-title, .stem-head { align-items: flex-start; flex-direction: column; } .results, .metrics { padding: 1.25rem; } .metric-grid { grid-template-columns: repeat(2, 1fr); } .hero aside { display: none; } .lane-actions { gap: .35rem; } }
+
+/* Workspace refinement: clearer hierarchy and a single status surface. */
+.brand { font-size: .9rem; letter-spacing: .2em; }
+header { position: relative; }
+nav button { padding: .7rem .25rem; }
+.hero { padding-top: 5.4rem; }
+.hero .eyebrow { margin-bottom: 1rem; }
+.lede { max-width: 610px; }
+.workbench { background: linear-gradient(150deg, #0d1b20 0%, #081317 100%); border-color: #29434b; }
+.mode-tabs { background: #0a1418; }
+.mode-tabs button { min-height: 54px; }
+.upload-panel { padding: clamp(1.25rem, 3vw, 2.5rem); }
+.upload-copy h2 { font-size: clamp(1.25rem, 2vw, 1.7rem); }
+.upload-copy p:not(.eyebrow) { max-width: 430px; }
+.dropzone { min-height: 205px; border-color: #3b626b; background: radial-gradient(ellipse at 50% 0%, #153b3d 0%, #0b1b20 72%); }
+.dropzone:focus-within { outline: 2px solid #3be3b1; outline-offset: 3px; }
+.primary { box-shadow: 0 5px 18px #3be3b11c; transition: transform .15s ease, filter .15s ease; }
+.primary:not(:disabled):hover { transform: translateY(-1px); filter: brightness(1.08); }
+.notice.track-status { margin-top: 0; line-height: 1.55; }
+.track-status strong { color: #ffe4eb; }
+.track-status p { margin: .45rem 0 0; }
+.track-status p:last-child { color: #e6b9c4; }
+@media (max-width: 760px) { .hero { padding-top: 3.4rem; } .dropzone { min-height: 170px; } }
