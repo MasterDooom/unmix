@@ -10,6 +10,7 @@ type ApiHealth = {
   status: string;
   api_contract_version: number;
   track_lab_optional: boolean;
+  track_lab_enabled?: boolean;
   track_lab_dependencies_installed: boolean;
   ffmpeg_available: boolean;
 };
@@ -128,7 +129,8 @@ export default function App() {
     return () => { active = false; };
   }, []);
 
-  const trackLabUnavailable = Boolean(health && (!health.track_lab_dependencies_installed || !health.ffmpeg_available));
+  const trackLabDisabledByHost = Boolean(health && health.track_lab_enabled === false);
+  const trackLabUnavailable = Boolean(health && (trackLabDisabledByHost || !health.track_lab_dependencies_installed || !health.ffmpeg_available));
 
   const sourcePreviews = useMemo(() => mixResult ? sourceFiles.map((file) => ({ name: `source · ${file.name}`, url: URL.createObjectURL(file) })) : [], [sourceFiles, mixResult]);
   const original = useMemo(() => trackResult && trackFile ? { name: `original · ${trackFile.name}`, url: URL.createObjectURL(trackFile) } : undefined, [trackFile, trackResult]);
@@ -149,8 +151,8 @@ export default function App() {
     finally { setProcessing(false); }
   };
 
-  return <main><header><a className="brand" href="#top" aria-label="Unmix home"><span>∿</span> UNMIX</a><nav><button className={mode === "track" ? "nav-active" : ""} onClick={() => setMode("track")}>Track Lab</button><button className={mode === "mix" ? "nav-active" : ""} onClick={() => setMode("mix")}>Mix Lab</button></nav><div className={healthFailed ? "header-status offline" : "header-status"} title={!apiConfigured ? "No production API URL configured" : healthFailed ? "FastAPI did not answer /api/health" : health ? (health.track_lab_dependencies_installed && health.ffmpeg_available ? "API and Track Lab dependencies detected" : "API is responding; Track Lab may need optional dependencies") : "Checking FastAPI health"}>
-      <i /> {!apiConfigured ? "API not configured" : healthFailed ? "API offline" : health ? (health.track_lab_dependencies_installed && health.ffmpeg_available ? "API + Track Lab runtime" : "API ready · Track Lab setup needed") : "Checking API…"}
+  return <main><header><a className="brand" href="#top" aria-label="Unmix home"><span>∿</span> UNMIX</a><nav><button className={mode === "track" ? "nav-active" : ""} onClick={() => setMode("track")}>Track Lab</button><button className={mode === "mix" ? "nav-active" : ""} onClick={() => setMode("mix")}>Mix Lab</button></nav><div className={healthFailed ? "header-status offline" : "header-status"} title={!apiConfigured ? "No production API URL configured" : healthFailed ? "FastAPI did not answer /api/health" : health ? (health.track_lab_enabled !== false && health.track_lab_dependencies_installed && health.ffmpeg_available ? "API and Track Lab dependencies detected" : "API is responding; Track Lab is unavailable on this host") : "Checking FastAPI health"}>
+      <i /> {!apiConfigured ? "API not configured" : healthFailed ? "API offline" : health ? (health.track_lab_enabled === false ? "API ready · Track Lab disabled for memory limit" : health.track_lab_dependencies_installed && health.ffmpeg_available ? "API + Track Lab runtime" : "API ready · Track Lab setup needed") : "Checking API…"}
     </div></header>
     <div id="top" className="hero"><div><p className="eyebrow">MUSIC REVERSE-ENGINEERING WORKSPACE</p><h1>See inside the <em>mix.</em></h1><p className="lede">A rigorous home for source-separation experiments: model-based stem estimates for finished tracks, and a transparent FastICA lab for controlled mixtures.</p></div><aside><span>01 / {mode === "track" ? "TRACK" : "MIX"}</span><p>{mode === "track" ? "Model outputs are useful estimates. They cannot establish original production stems." : "Known source files stay out of the separator and return only for evaluation."}</p></aside></div>
     <section className="workbench"><div className="mode-tabs"><button className={mode === "track" ? "selected" : ""} onClick={() => setMode("track")}>Track Lab <small>pretrained</small></button><button className={mode === "mix" ? "selected" : ""} onClick={() => setMode("mix")}>Mix Lab <small>FastICA</small></button></div>
@@ -158,6 +160,7 @@ export default function App() {
       {mode === "mix" && sourceFiles.length >= 2 && <section className="matrix"><div><p className="eyebrow">MIXING MATRIX A</p><h2>Define observed channels</h2><p>Rows are mixtures; columns are sources. The default matrix deliberately cross-mixes sources. Stereo uploads are averaged to mono before ICA. The matrix must be finite, full-column-rank, and have at least as many rows as columns.</p></div><textarea aria-label="Mixing matrix JSON" value={matrix} onChange={(event) => setMatrix(event.target.value)} spellCheck={false} /><button className="primary" onClick={runMix} disabled={processing}>Run ICA recovery</button></section>}
        {health && mode === "track" && !health.track_lab_dependencies_installed && <div className="notice error" role="status">Track Lab is unavailable on this API because its optional pretrained model runtime is not installed. The upload is disabled to avoid a request that cannot succeed. Run <code>web\start-local.ps1</code> locally without <code>-CoreOnly</code>, or use Mix Lab.</div>}
        {health && mode === "track" && health.track_lab_dependencies_installed && !health.ffmpeg_available && <div className="notice error" role="status">Track Lab runtime is installed, but FFmpeg is missing from this API environment. Install FFmpeg before attempting separation, or use Mix Lab.</div>}
+      {health && mode === "track" && health.track_lab_enabled === false && <div className="notice error" role="status">Hosted Track Lab is disabled because pretrained inference exceeded this service’s 512 MiB memory limit. Mix Lab remains available. Run Track Lab locally on a machine with more RAM.</div>}
       {processing && <div className="notice working"><span className="spinner" /> Processing audio. First-time Track Lab model loading may take several minutes.</div>}
       {error && <div className="notice error" role="alert">{error}</div>}
       {mode === "track" && trackResult && <StemBoard stems={trackResult.stems} original={original} />}
