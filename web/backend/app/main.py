@@ -6,6 +6,7 @@ import asyncio
 import importlib.util
 import json
 import logging
+import os
 import shutil
 import subprocess
 import sys
@@ -32,9 +33,12 @@ MAX_DURATION_SECONDS = 20 * 60
 JOB_TTL_SECONDS = 60 * 60
 ALLOWED_SUFFIXES = {".wav", ".flac", ".mp3", ".m4a", ".ogg"}
 app = FastAPI(title="Unmix API", version="0.1.0")
+_cors_origins = [origin.strip() for origin in os.getenv("UNMIX_CORS_ORIGINS", "http://localhost:5173").split(",") if origin.strip()]
+if "*" in _cors_origins:
+    raise RuntimeError("UNMIX_CORS_ORIGINS must list explicit origins; wildcard CORS is not allowed.")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=_cors_origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],

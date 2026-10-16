@@ -1,6 +1,7 @@
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StemLane } from "./components/StemLane";
 import WaveSurfer from "wavesurfer.js";
+import { apiFetch, apiConfigured, normalizeApiResult } from "./api";
 
 type Mode = "track" | "mix";
 type Stem = { name: string; url: string };
@@ -37,7 +38,7 @@ const requestError = async (response: Response) => {
 function explainFailure(reason: unknown) {
   const message = reason instanceof Error ? reason.message : "Unexpected request failure.";
   if (/failed to fetch|networkerror|load failed/i.test(message)) {
-    return "Cannot reach the Unmix API. Start the backend and frontend with .\\web\\start-local.ps1, then open http://localhost:5173.";
+    return "Cannot reach the Unmix API. In production, configure the UNMIX_API_BASE repository variable to your deployed HTTPS API URL. For local development, start the backend and frontend with .\\web\\start-local.ps1.";
   }
   return message;
 }
@@ -110,7 +111,7 @@ export default function App() {
   const [mixResult, setMixResult] = useState<MixResult | null>(null);
   useEffect(() => {
     let active = true;
-    fetch("/api/health")
+    apiFetch("/api/health")
       .then(async (response) => {
         if (!response.ok) throw new Error("API health check failed");
         return response.json() as Promise<ApiHealth>;
@@ -133,7 +134,7 @@ export default function App() {
   const chooseTrack = async (file: File) => {
     setTrackFile(file); setTrackResult(null); setError(null); setProcessing(true);
     const form = new FormData(); form.append("track", file);
-    try { const response = await fetch("/api/track-lab/separate", { method: "POST", body: form }); if (!response.ok) throw new Error(await requestError(response)); setTrackResult(await response.json()); }
+    try { const response = await apiFetch("/api/track-lab/separate", { method: "POST", body: form }); if (!response.ok) throw new Error(await requestError(response)); setTrackResult(normalizeApiResult(await response.json())); }
     catch (reason) { setError(explainFailure(reason)); }
     finally { setProcessing(false); }
   };
@@ -141,13 +142,13 @@ export default function App() {
   const runMix = async () => {
     if (sourceFiles.length < 2) return; setError(null); setProcessing(true);
     const form = new FormData(); sourceFiles.forEach((source) => form.append("sources", source)); form.append("mixing_matrix", matrix);
-    try { const response = await fetch("/api/mix-lab/separate", { method: "POST", body: form }); if (!response.ok) throw new Error(await requestError(response)); setMixResult(await response.json()); }
+    try { const response = await apiFetch("/api/mix-lab/separate", { method: "POST", body: form }); if (!response.ok) throw new Error(await requestError(response)); setMixResult(normalizeApiResult(await response.json())); }
     catch (reason) { setError(explainFailure(reason)); }
     finally { setProcessing(false); }
   };
 
-  return <main><header><a className="brand" href="#top" aria-label="Unmix home"><span>∿</span> UNMIX</a><nav><button className={mode === "track" ? "nav-active" : ""} onClick={() => setMode("track")}>Track Lab</button><button className={mode === "mix" ? "nav-active" : ""} onClick={() => setMode("mix")}>Mix Lab</button></nav><div className={healthFailed ? "header-status offline" : "header-status"} title={healthFailed ? "FastAPI did not answer /api/health" : health ? (health.track_lab_dependencies_installed && health.ffmpeg_available ? "API and Track Lab dependencies detected" : "API is responding; Track Lab may need optional dependencies") : "Checking FastAPI health"}>
-      <i /> {healthFailed ? "API offline" : health ? (health.track_lab_dependencies_installed && health.ffmpeg_available ? "API + Track Lab runtime" : "API ready · Track Lab setup needed") : "Checking API…"}
+  return <main><header><a className="brand" href="#top" aria-label="Unmix home"><span>∿</span> UNMIX</a><nav><button className={mode === "track" ? "nav-active" : ""} onClick={() => setMode("track")}>Track Lab</button><button className={mode === "mix" ? "nav-active" : ""} onClick={() => setMode("mix")}>Mix Lab</button></nav><div className={healthFailed ? "header-status offline" : "header-status"} title={!apiConfigured ? "No production API URL configured" : healthFailed ? "FastAPI did not answer /api/health" : health ? (health.track_lab_dependencies_installed && health.ffmpeg_available ? "API and Track Lab dependencies detected" : "API is responding; Track Lab may need optional dependencies") : "Checking FastAPI health"}>
+      <i /> {!apiConfigured ? "API not configured" : healthFailed ? "API offline" : health ? (health.track_lab_dependencies_installed && health.ffmpeg_available ? "API + Track Lab runtime" : "API ready · Track Lab setup needed") : "Checking API…"}
     </div></header>
     <div id="top" className="hero"><div><p className="eyebrow">MUSIC REVERSE-ENGINEERING WORKSPACE</p><h1>See inside the <em>mix.</em></h1><p className="lede">A rigorous home for source-separation experiments: model-based stem estimates for finished tracks, and a transparent FastICA lab for controlled mixtures.</p></div><aside><span>01 / {mode === "track" ? "TRACK" : "MIX"}</span><p>{mode === "track" ? "Model outputs are useful estimates. They cannot establish original production stems." : "Known source files stay out of the separator and return only for evaluation."}</p></aside></div>
     <section className="workbench"><div className="mode-tabs"><button className={mode === "track" ? "selected" : ""} onClick={() => setMode("track")}>Track Lab <small>pretrained</small></button><button className={mode === "mix" ? "selected" : ""} onClick={() => setMode("mix")}>Mix Lab <small>FastICA</small></button></div>
