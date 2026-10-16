@@ -9,6 +9,8 @@ on:
       - "experiments/track_lab_smoke.py"
       - "web/backend/app/main.py"
       - "web/backend/app/track_lab.py"
+      - "web/requirements.txt"
+      - "web/requirements-core.txt"
       - "web/requirements-track-lab.txt"
 
 permissions:
@@ -42,7 +44,7 @@ jobs:
       - name: Install the actual API and pretrained CPU runtime
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r web/requirements.txt
+          python -m pip install -r web/requirements-core.txt
           python -m pip install --upgrade --index-url https://download.pytorch.org/whl/cpu torch torchvision
           python -m pip install -r web/requirements-track-lab.txt
           python -c "import audio_separator.separator, audioread, torch; print('torch:', torch.__version__, '| CUDA build:', torch.version.cuda); assert torch.version.cuda is None, 'Expected CPU-only PyTorch wheels'"
