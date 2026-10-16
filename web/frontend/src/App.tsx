@@ -43,16 +43,16 @@ function explainFailure(reason: unknown) {
   return message;
 }
 
-function UploadPanel({ mode, onTrack, onMix }: { mode: Mode; onTrack: (file: File) => void; onMix: (files: FileList) => void }) {
+function UploadPanel({ mode, onTrack, onMix, trackDisabled = false }: { mode: Mode; onTrack: (file: File) => void; onMix: (files: FileList) => void; trackDisabled?: boolean }) {
   const [track, setTrack] = useState<File | null>(null);
   const [sources, setSources] = useState<FileList | null>(null);
   const submit = (event: FormEvent) => { event.preventDefault(); if (mode === "track" && track) onTrack(track); if (mode === "mix" && sources) onMix(sources); };
   return <form className="upload-panel" onSubmit={submit}>
     <div className="upload-copy"><p className="eyebrow">{mode === "track" ? "PRETRAINED STEM ESTIMATION" : "FROM-SCRATCH ICA EXPERIMENT"}</p><h2>{mode === "track" ? "Open a finished track" : "Bring in clean source tracks"}</h2><p>{mode === "track" ? "Estimate the stems a supported model returns. They are estimates, not the original studio tracks." : "Create a known linear mix and measure blind recovery without assuming a fixed source count."}</p></div>
-    <label className="dropzone"><input aria-label={mode === "track" ? "Track file" : "Source files"} type="file" accept=".wav,.flac,.mp3,.m4a,.ogg,audio/wav,audio/flac,audio/mpeg,audio/mp4,audio/ogg" multiple={mode === "mix"} onChange={(event: ChangeEvent<HTMLInputElement>) => mode === "track" ? setTrack(event.target.files?.[0] ?? null) : setSources(event.target.files)} />
+    <label className="dropzone"><input aria-label={mode === "track" ? "Track file" : "Source files"} type="file" accept=".wav,.flac,.mp3,.m4a,.ogg,audio/wav,audio/flac,audio/mpeg,audio/mp4,audio/ogg" multiple={mode === "mix"} disabled={mode === "track" && trackDisabled} onChange={(event: ChangeEvent<HTMLInputElement>) => mode === "track" ? setTrack(event.target.files?.[0] ?? null) : setSources(event.target.files)} />
       <span>⇧</span><strong>{mode === "track" ? track?.name ?? "Choose an audio file" : sources?.length ? `${sources.length} source files selected` : "Choose two or more source files"}</strong><small>WAV, FLAC, MP3, M4A, or OGG · 100 MB per file</small>
     </label>
-    <button className="primary" type="submit" disabled={mode === "track" ? !track : !sources || sources.length < 2}>{mode === "track" ? "Estimate stems" : "Set up Mix Lab"}</button>
+    <button className="primary" type="submit" disabled={mode === "track" ? (!track || trackDisabled) : !sources || sources.length < 2}>{mode === "track" ? "Estimate stems" : "Set up Mix Lab"}</button>
   </form>;
 }
 
@@ -127,6 +127,8 @@ export default function App() {
       });
     return () => { active = false; };
   }, []);
+
+  const trackLabUnavailable = Boolean(health && (!health.track_lab_dependencies_installed || !health.ffmpeg_available));
 
   const sourcePreviews = useMemo(() => mixResult ? sourceFiles.map((file) => ({ name: `source · ${file.name}`, url: URL.createObjectURL(file) })) : [], [sourceFiles, mixResult]);
   const original = useMemo(() => trackResult && trackFile ? { name: `original · ${trackFile.name}`, url: URL.createObjectURL(trackFile) } : undefined, [trackFile, trackResult]);
