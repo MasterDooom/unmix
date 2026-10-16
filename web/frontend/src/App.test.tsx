@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import App from "./App";
 
@@ -64,6 +64,7 @@ describe("Unmix workspace", () => {
       expect(screen.getByLabelText("Track file")).toBeDisabled();
       expect(screen.getByRole("button", { name: /estimate stems/i })).toBeDisabled();
     } finally {
+      cleanup();
       vi.unstubAllGlobals();
     }
   });
