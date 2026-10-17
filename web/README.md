@@ -9,6 +9,15 @@ From the repository root, use the commands in the root [README](../README.md).
 The API is at `http://localhost:8000`; the Vite workspace is normally at
 `http://localhost:5173`.
 
+## Hosted API configuration
+
+The frontend supports separate API origins so heavy pretrained inference does not have to run on the small Mix Lab API:
+
+- `UNMIX_API_BASE`: the main FastAPI service used for Mix Lab.
+- `UNMIX_TRACK_API_BASE`: optional, separate Track Lab inference service. Set this as a GitHub Actions repository variable; the Pages build passes it to Vite as `VITE_TRACK_API_BASE`. It must implement `GET /api/health`, `POST /api/track-lab/separate` with multipart field `track`, and serve returned `/media/...` URLs from the same origin.
+
+If `UNMIX_TRACK_API_BASE` is unset, the frontend falls back to the main API. It does not bypass the main host's model/resource limits, and Track Lab is disabled in the UI when the configured endpoint reports it is unavailable. A configured URL alone is not proof of successful inference; verify health, CORS, a real separation request, and stem downloads on the deployed service.
+
 ## Workflows and safety boundaries
 
 **Mix Lab** accepts a variable number of source files and JSON mixing matrix
