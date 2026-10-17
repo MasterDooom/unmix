@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg libsndfi
 COPY requirements.txt .
 # CPU Spaces cannot use CUDA. Install CPU-only PyTorch first to avoid pulling
 # hundreds of MB of unused CUDA/NVIDIA wheels from the default PyPI index.
-RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch torchvision \
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch \
     && pip install --no-cache-dir -r requirements.txt
 COPY app.py .
 RUN mkdir -p /data/models /data/jobs
