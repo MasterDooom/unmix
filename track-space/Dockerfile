@@ -5,7 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     AUDIO_SEPARATOR_MODEL_DIR=/data/models
 
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg libsndfile1 && rm -rf /var/lib/apt/lists/*
+# diffq (a transitive Audio Separator dependency) builds a small native extension.
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg libsndfile1 build-essential && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 # CPU Spaces cannot use CUDA. Install CPU-only PyTorch first to avoid pulling
 # hundreds of MB of unused CUDA/NVIDIA wheels from the default PyPI index.
