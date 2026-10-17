@@ -1,7 +1,7 @@
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StemLane } from "./components/StemLane";
 import WaveSurfer from "wavesurfer.js";
-import { apiFetch, apiConfigured, normalizeApiResult } from "./api";
+import { apiFetch, apiConfigured, normalizeApiResult, normalizeTrackApiResult, trackApiFetch } from "./api";
 
 type Mode = "track" | "mix";
 type Stem = { name: string; url: string };
@@ -106,6 +106,7 @@ export default function App() {
   const [matrix, setMatrix] = useState(defaultMixingMatrix(2));
   const [processing, setProcessing] = useState(false);
   const [health, setHealth] = useState<ApiHealth | null>(null);
+  const [trackHealth, setTrackHealth] = useState<Partial<ApiHealth> | null>(null);
   const [healthFailed, setHealthFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [trackResult, setTrackResult] = useState<TrackResult | null>(null);
@@ -126,6 +127,13 @@ export default function App() {
       .catch(() => {
         if (active) setHealthFailed(true);
       });
+    trackApiFetch("/api/health")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Track Lab health check failed");
+        return response.json() as Promise<Partial<ApiHealth>>;
+      })
+      .then((value) => { if (active) setTrackHealth(value); })
+      .catch(() => { if (active) setTrackHealth(null); });
     return () => { active = false; };
   }, []);
 
@@ -138,7 +146,7 @@ export default function App() {
   const chooseTrack = async (file: File) => {
     setTrackFile(file); setTrackResult(null); setError(null); setProcessing(true);
     const form = new FormData(); form.append("track", file);
-    try { const response = await apiFetch("/api/track-lab/separate", { method: "POST", body: form }); if (!response.ok) throw new Error(await requestError(response)); setTrackResult(normalizeApiResult(await response.json())); }
+    try { const response = await trackApiFetch("/api/track-lab/separate", { method: "POST", body: form }); if (!response.ok) throw new Error(await requestError(response)); setTrackResult(normalizeTrackApiResult(await response.json())); }
     catch (reason) { setError(explainFailure(reason)); }
     finally { setProcessing(false); }
   };
