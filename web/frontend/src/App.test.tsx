@@ -60,7 +60,7 @@ describe("Unmix workspace", () => {
     }));
     try {
       render(<App />);
-      expect(await screen.findByText(/this api does not have the optional pretrained model runtime installed/i)).toBeInTheDocument();
+      expect(await screen.findByText(/the track lab api does not have the optional pretrained model runtime installed/i)).toBeInTheDocument();
       expect(screen.getByLabelText("Track file")).toBeDisabled();
       expect(screen.getByRole("button", { name: /estimate stems/i })).toBeDisabled();
     } finally {
@@ -70,9 +70,21 @@ describe("Unmix workspace", () => {
   });
 
   it("explains how to start the API when a Track Lab upload cannot connect", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    const healthy = {
+      status: "ok",
+      api_contract_version: 2,
+      track_lab_optional: true,
+      track_lab_enabled: true,
+      track_lab_dependencies_installed: true,
+      ffmpeg_available: true,
+    };
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => healthy })
+      .mockResolvedValueOnce({ ok: true, json: async () => healthy })
+      .mockRejectedValue(new TypeError("Failed to fetch")));
     try {
       render(<App />);
+      await screen.findByText(/api \+ track lab runtime/i);
       fireEvent.change(screen.getByLabelText("Track file"), {
         target: { files: [new File(["audio"], "song.wav", { type: "audio/wav" })] },
       });
