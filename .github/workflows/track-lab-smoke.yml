@@ -12,11 +12,21 @@ on:
       - "web/requirements.txt"
       - "web/requirements-core.txt"
       - "web/requirements-track-lab.txt"
+      - "track-space/**"
 
 permissions:
   contents: read
 
 jobs:
+  track-space-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Build the Hugging Face Space image
+        run: docker build --tag unmix-track-space track-space
+
   pretrained-track-lab:
     runs-on: ubuntu-latest
     timeout-minutes: 40
