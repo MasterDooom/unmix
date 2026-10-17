@@ -31,11 +31,21 @@ These references informed independent implementations; no third-party algorithm 
   lazy `Separator` API, multiple supported model families, optional model weights,
   and UVR attribution guidance informed the isolated Track Lab adapter. The first
   release explicitly selects the documented
-  `model_mel_band_roformer_ep_3005_sdr_11.4360.ckpt` preset behind an optional
-  requirement; no Audio Separator implementation or model is a core dependency
-  or test fixture.
+  `UVR-MDX-NET-Inst_HQ_5.onnx` vocal/instrumental preset for lower-resource CPU
+  inference; the core ICA implementation remains independent of this package.
 - JonPark0, [`web_audio_splitter`](https://github.com/JonPark0/web_audio_splitter)
   (repository architecture and licence notice inspected 2026-10-14). Its
   FastAPI-oriented separation-service shape and bounded job-processing approach
   informed the thin local API/timeout design. No code or model integration was
   reused.
+
+
+## Previously supplied repositories evaluated for Unmix
+
+- AIcrowd, [music-demixing-challenge-starter-kit](https://github.com/AIcrowd/music-demixing-challenge-starter-kit) (MIT). Inspected the evaluation/submission structure and known-stem dataset convention. This project adopts the research principle of evaluating estimates against reference sources when ground truth exists, without copying its challenge runtime or claiming that arbitrary uploaded songs have known original stems.
+- [NotVinay/karaokey](https://github.com/NotVinay/karaokey) (GPL-3.0). Inspected its trained vocal-removal approach and setup. Its copyleft code is not copied; the existing Audio Separator adapter is a simpler fit for this deadline and avoids mixing licenses without a clear need.
+- [fabiogra/moseca](https://github.com/fabiogra/moseca) (MIT). Inspected its local setup, Streamlit UI, multi-stem modes, and model attribution notes. Its overall local-first workflow is useful evidence, but its Streamlit app and model stack are not copied because Unmix already has a working React/FastAPI interface and a separate from-scratch ICA experiment.
+- [facebookresearch/demucs](https://github.com/facebookresearch/demucs) (MIT; repository archived). Inspected its four-stem model path and published limitations. Demucs remains a valid comparison/model option, but the default demo uses a smaller ONNX vocal/instrumental model to make CPU-only local inference more practical. Four-stem inference is not represented as available in the current default Track Lab.
+- [nomadkaraoke/python-audio-separator](https://github.com/nomadkaraoke/python-audio-separator) (MIT). Its supported ONNX/MDX and Demucs model APIs provide the pretrained inference layer, rather than replacing the project's own ICA implementation.
+
+Architecture decision: keep two distinct, clearly labelled experiments. Track Lab uses a pretrained model for approximate stems from an unknown song; Mix Lab uses known source files to construct a controlled linear mixture and evaluates the repository's own PCA-whitening/FastICA implementation. These are different tasks and their metrics must not be conflated.
