@@ -46,6 +46,7 @@ jobs:
         env:
           VITE_BASE: /unmix/
           VITE_API_BASE: ${{ vars.UNMIX_API_BASE || 'https://unmix-api.onrender.com' }}
+          VITE_TRACK_API_BASE: ${{ vars.UNMIX_TRACK_API_BASE || '' }}
         run: npm run build
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
