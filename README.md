@@ -100,7 +100,7 @@ From the repository root in PowerShell, run:
 .\web\start-local.ps1
 ```
 
-The script creates a project-local `.venv` using Python 3.12 when available (with 3.10-3.13 fallbacks), installs the API/frontend dependencies, installs CPU-only PyTorch wheels before the optional Track Lab model runtime, and attempts to install FFmpeg. It then starts the FastAPI backend and Vite frontend in separate terminals, verifies the backend contract/health endpoint, and opens `http://localhost:5173`. It checks for a stale server left on port 8000 rather than silently using an older API. The first launch can take several minutes; the first Track Lab separation may download model weights.
+The launcher is localhost-first; it does not require GitHub Pages, Render, or Hugging Face. It creates a project-local `.venv` using Python 3.12 when available (with 3.10-3.13 fallbacks), installs the API/frontend dependencies, installs CPU-only PyTorch wheels before the optional Track Lab model runtime, and attempts to install FFmpeg. It then starts the FastAPI backend and Vite frontend in separate terminals, verifies the backend contract/health endpoint, and opens `http://localhost:5173`. It checks for a stale server left on port 8000 rather than silently using an older API. The first launch can take several minutes; the first Track Lab separation may download model weights.
 
 Use `-CoreOnly` to skip the heavy pretrained-model dependencies and run Mix Lab only. In that mode Track Lab will remain unavailable until its optional dependencies are installed. Use `-SkipInstall` if dependencies are already installed.
 
