@@ -1,5 +1,6 @@
 fastapi>=0.115,<1
 uvicorn[standard]>=0.30,<1
 python-multipart>=0.0.9
-audio-separator>=0.30,<1
+# Track Lab uses ONNX models; the cpu extra installs onnxruntime without CUDA.
+audio-separator[cpu]>=0.30,<1
 soundfile>=0.12
